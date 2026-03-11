@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse";
 
-import { callAI, classifyFile, extractDeadlines, getDefaultAIConfig } from "@/lib/ai";
+import { callAI, classifyFile, extractDeadlines } from "@/lib/ai";
 import {
   getAnnouncements,
   getAssignments,
@@ -168,8 +168,8 @@ async function ensurePhase1User(): Promise<UserRow> {
     .from("users")
     .insert({
       email: process.env.PHASE1_USER_EMAIL?.trim() || DEFAULT_PHASE1_USER_EMAIL,
-      ai_provider: getDefaultAIConfig().provider,
-      ai_model: getDefaultAIConfig().model,
+      ai_provider: process.env.AI_MODEL?.toLowerCase().startsWith("claude") ? "anthropic" : "openai",
+      ai_model: process.env.AI_MODEL?.trim() || null,
     })
     .select("id, email, last_synced_at")
     .single();
