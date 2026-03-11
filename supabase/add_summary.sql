@@ -1,0 +1,1 @@
+ALTER TABLE canvas_files ADD COLUMN IF NOT EXISTS ai_summary TEXT;

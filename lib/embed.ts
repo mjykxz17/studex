@@ -1,95 +1,54 @@
-import OpenAI from "openai";
+import { pipeline } from "@huggingface/transformers";
 
-const EMBED_MODEL = process.env.EMBED_MODEL ?? "text-embedding-3-small";
+let embeddingPipeline: any = null;
 
-let openaiClient: OpenAI | null = null;
-
-function getOpenAIClient() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set.");
+async function getPipeline() {
+  if (!embeddingPipeline) {
+    embeddingPipeline = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
   }
-
-  openaiClient ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return openaiClient;
+  return embeddingPipeline;
 }
 
-function tokenizeApprox(text: string) {
-  return text
-    .replace(/\r\n/g, "\n")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
-export function chunkText(text: string, chunkSize = 500, overlap = 50): string[] {
-  const cleaned = text.replace(/\r\n/g, "\n").trim();
-
-  if (!cleaned) {
-    return [];
-  }
-
-  if (chunkSize <= 0) {
-    throw new Error("chunkSize must be greater than 0.");
-  }
-
-  if (overlap < 0) {
-    throw new Error("overlap cannot be negative.");
-  }
-
-  if (overlap >= chunkSize) {
-    throw new Error("overlap must be smaller than chunkSize.");
-  }
-
-  const tokens = tokenizeApprox(cleaned);
-
-  if (tokens.length === 0) {
-    return [];
-  }
-
-  const step = chunkSize - overlap;
+/**
+ * Split text into overlapping chunks for RAG.
+ */
+export function chunkText(text: string, size = 500, overlap = 50): string[] {
+  const words = text.split(/\s+/);
   const chunks: string[] = [];
 
-  for (let start = 0; start < tokens.length; start += step) {
-    const chunkTokens = tokens.slice(start, start + chunkSize);
-
-    if (chunkTokens.length === 0) {
-      break;
+  for (let i = 0; i < words.length; i += size - overlap) {
+    const chunk = words.slice(i, i + size).join(" ");
+    if (chunk.trim()) {
+      chunks.push(chunk);
     }
-
-    chunks.push(chunkTokens.join(" "));
-
-    if (start + chunkSize >= tokens.length) {
-      break;
-    }
+    if (i + size >= words.length) break;
   }
 
   return chunks;
 }
 
+/**
+ * Generate vector embeddings locally using Transformers.js.
+ * Model: Xenova/all-MiniLM-L6-v2 (384 dimensions)
+ */
+export async function generateEmbeddings(inputs: string[]): Promise<number[][]> {
+  if (inputs.length === 0) return [];
+
+  const extractor = await getPipeline();
+  const results: number[][] = [];
+
+  for (const input of inputs) {
+    const output = await extractor(input, { pooling: "mean", normalize: true });
+    results.push(Array.from(output.data));
+  }
+
+  return results;
+}
+
+/**
+ * Legacy wrapper for single embedding.
+ */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const input = text.trim();
-
-  if (!input) {
-    throw new Error("Cannot generate an embedding for empty text.");
-  }
-
-  const client = getOpenAIClient();
-  const response = await client.embeddings.create({
-    model: EMBED_MODEL,
-    input,
-  });
-
-  const embedding = response.data[0]?.embedding;
-
-  if (!embedding) {
-    throw new Error("OpenAI did not return an embedding.");
-  }
-
-  if (embedding.length !== 1536 && EMBED_MODEL === "text-embedding-3-small") {
-    throw new Error(
-      `Expected a 1536-dimensional embedding from ${EMBED_MODEL}, received ${embedding.length}.`,
-    );
-  }
-
-  return embedding;
+  const results = await generateEmbeddings([text]);
+  return results[0];
 }

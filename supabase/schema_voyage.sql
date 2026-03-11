@@ -1,7 +1,13 @@
--- Enable vector support
-create extension if not exists vector;
+CREATE EXTENSION IF NOT EXISTS vector;
+DROP TABLE IF EXISTS sync_log;
+DROP TABLE IF EXISTS embeddings;
+DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS announcements;
+DROP TABLE IF EXISTS canvas_files;
+DROP TABLE IF EXISTS modules;
+DROP TABLE IF EXISTS users;
+DROP FUNCTION IF EXISTS match_chunks;
 
--- Users table (Phase 1: single row for Aiden. Phase 2: one row per student)
 create table users (
  id uuid default gen_random_uuid() primary key,
  email text unique,
@@ -70,7 +76,7 @@ create table embeddings (
  source_id uuid,
  chunk_index int,
  chunk_text text,
- embedding vector(1536),
+ embedding vector(1024),
  created_at timestamptz default now()
 );
 
@@ -85,7 +91,7 @@ create table sync_log (
 );
 
 create function match_chunks(
- query_embedding vector(1536),
+ query_embedding vector(1024),
  match_user_id uuid,
  match_module_id uuid,
  match_count int

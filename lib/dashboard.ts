@@ -1,6 +1,17 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
+import { fetchNUSModsModule, type NUSModsData } from "./nusmods";
+
+export type CanvasFileSummary = {
+  id: string;
+  name: string;
+  type: string;
+  category: string;
+  sizeLabel: string;
+  uploadedLabel: string;
+  summary: string;
+};
 
 export type ModuleSummary = {
   id: string;
@@ -9,6 +20,9 @@ export type ModuleSummary = {
   taskCount: number;
   announcementCount: number;
   lastSyncLabel: string;
+  sync_enabled: boolean;
+  files: CanvasFileSummary[];
+  nusmods?: NUSModsData | null;
 };
 
 export type WeeklyTask = {
@@ -188,7 +202,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
     ] = await Promise.all([
       supabase
         .from("modules")
-        .select("id, code, title, last_canvas_sync, tasks(count), announcements(count)")
+        .select("id, code, title, last_canvas_sync, sync_enabled, tasks(count), announcements(count), canvas_files(*)")
         .order("code", { ascending: true }),
       supabase
         .from("tasks")
@@ -207,17 +221,32 @@ export async function loadDashboardData(): Promise<DashboardData> {
       throw modulesError ?? tasksError ?? announcementsError;
     }
 
-    const modules: ModuleSummary[] =
-      modulesData?.map((module) => ({
-        id: String(module.id),
-        code: module.code ?? "MOD",
-        title: module.title ?? "Untitled module",
-        taskCount: Array.isArray(module.tasks) ? module.tasks[0]?.count ?? 0 : 0,
-        announcementCount: Array.isArray(module.announcements)
-          ? module.announcements[0]?.count ?? 0
-          : 0,
-        lastSyncLabel: formatRelativeDayLabel(module.last_canvas_sync),
-      })) ?? [];
+    const modules: ModuleSummary[] = await Promise.all(
+      (modulesData ?? []).map(async (module) => {
+        const nusmods = await fetchNUSModsModule(module.code ?? "");
+        return {
+          id: String(module.id),
+          code: module.code ?? "MOD",
+          title: module.title ?? "Untitled module",
+          taskCount: Array.isArray(module.tasks) ? module.tasks[0]?.count ?? 0 : 0,
+          announcementCount: Array.isArray(module.announcements)
+            ? module.announcements[0]?.count ?? 0
+            : 0,
+          lastSyncLabel: formatRelativeDayLabel(module.last_canvas_sync),
+          sync_enabled: module.sync_enabled ?? true,
+          files: (Array.isArray(module.canvas_files) ? module.canvas_files : []).map((f: any) => ({
+            id: String(f.id),
+            name: f.filename ?? "Unknown file",
+            type: f.file_type ?? "pdf",
+            category: f.file_type === "lecture" ? "Lecture" : f.file_type === "tutorial" ? "Tutorial" : "Reference",
+            sizeLabel: "Synced",
+            uploadedLabel: formatRelativeDayLabel(f.uploaded_at),
+            summary: f.ai_summary || (f.extracted_text ? (f.extracted_text.slice(0, 200) + "...") : "No summary available."),
+          })),
+          nusmods,
+        };
+      })
+    );
 
     const tasks: WeeklyTask[] =
       tasksData?.map((task) => ({

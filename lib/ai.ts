@@ -3,7 +3,7 @@ import OpenAI from "openai";
 
 const DEFAULT_MODEL = process.env.AI_MODEL ?? "claude-haiku-4-5";
 const DEFAULT_CHEAP_OPENAI_MODEL = "gpt-4o-mini";
-const DEFAULT_CHEAP_ANTHROPIC_MODEL = "claude-3-5-haiku-latest";
+const DEFAULT_CHEAP_ANTHROPIC_MODEL = "claude-haiku-4-5";
 
 export type AIProvider = "openai" | "anthropic";
 export type AIAuthMode = "apiKey" | "oauth";
