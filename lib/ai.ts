@@ -5,7 +5,25 @@ const DEFAULT_MODEL = process.env.AI_MODEL ?? "claude-haiku-4-5";
 const DEFAULT_CHEAP_OPENAI_MODEL = "gpt-4o-mini";
 const DEFAULT_CHEAP_ANTHROPIC_MODEL = "claude-3-5-haiku-latest";
 
-type AIProvider = "openai" | "anthropic";
+export type AIProvider = "openai" | "anthropic";
+export type AIAuthMode = "apiKey" | "oauth";
+
+export type AICredentials = {
+  apiKey?: string | null;
+  accessToken?: string | null;
+};
+
+export type AIAuthConfig = {
+  provider: AIProvider;
+  authMode: AIAuthMode;
+  credentials: AICredentials;
+};
+
+export type AIConfig = {
+  provider: AIProvider;
+  model: string;
+  auth: AIAuthConfig;
+};
 
 type Deadline = {
   title: string;
@@ -23,10 +41,20 @@ type FileClassification = {
   reasoning: string;
 };
 
-let openaiClient: OpenAI | null = null;
-let anthropicClient: Anthropic | null = null;
+type AIConfigInput =
+  | string
+  | {
+      model?: string;
+      provider?: AIProvider;
+      auth?: Partial<Pick<AIAuthConfig, "authMode">> & {
+        credentials?: AICredentials;
+      };
+    };
 
-function getProvider(model: string): AIProvider {
+const openaiClientCache = new Map<string, OpenAI>();
+const anthropicClientCache = new Map<string, Anthropic>();
+
+export function getProvider(model: string): AIProvider {
   const normalized = model.toLowerCase();
 
   if (normalized.startsWith("gpt") || normalized.startsWith("o1") || normalized.startsWith("o3") || normalized.startsWith("o4")) {
@@ -40,22 +68,93 @@ function getProvider(model: string): AIProvider {
   throw new Error(`Unsupported AI model: ${model}`);
 }
 
-function getOpenAIClient() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set.");
-  }
-
-  openaiClient ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return openaiClient;
+function getEnvApiKey(provider: AIProvider): string | undefined {
+  return provider === "openai" ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY;
 }
 
-function getAnthropicClient() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY is not set.");
+function getDefaultAuthConfig(provider: AIProvider): AIAuthConfig {
+  return {
+    provider,
+    authMode: "apiKey",
+    credentials: {
+      apiKey: getEnvApiKey(provider),
+    },
+  };
+}
+
+export function resolveAIConfig(input?: AIConfigInput): AIConfig {
+  const model = typeof input === "string" ? input : input?.model?.trim() || DEFAULT_MODEL;
+  const provider = (typeof input === "object" && input?.provider) || getProvider(model);
+  const defaultAuth = getDefaultAuthConfig(provider);
+
+  return {
+    provider,
+    model,
+    auth: {
+      provider,
+      authMode: input && typeof input === "object" ? input.auth?.authMode ?? defaultAuth.authMode : defaultAuth.authMode,
+      credentials: {
+        apiKey:
+          input && typeof input === "object" && input.auth?.credentials?.apiKey !== undefined
+            ? input.auth.credentials.apiKey
+            : defaultAuth.credentials.apiKey,
+        accessToken:
+          input && typeof input === "object" && input.auth?.credentials?.accessToken !== undefined
+            ? input.auth.credentials.accessToken
+            : defaultAuth.credentials.accessToken,
+      },
+    },
+  };
+}
+
+export function getDefaultAIConfig(): AIConfig {
+  return resolveAIConfig();
+}
+
+function getOpenAIClient(auth: AIAuthConfig) {
+  if (auth.authMode !== "apiKey") {
+    throw new Error(`OpenAI auth mode ${auth.authMode} is not implemented yet.`);
   }
 
-  anthropicClient ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return anthropicClient;
+  const apiKey = auth.credentials.apiKey?.trim();
+
+  if (!apiKey) {
+    throw new Error("OpenAI API key is not configured.");
+  }
+
+  const cacheKey = `${auth.provider}:${auth.authMode}:${apiKey}`;
+  const existing = openaiClientCache.get(cacheKey);
+
+  if (existing) {
+    return existing;
+  }
+
+  const client = new OpenAI({ apiKey });
+  openaiClientCache.set(cacheKey, client);
+  return client;
+}
+
+function getAnthropicClient(auth: AIAuthConfig) {
+  if (auth.authMode !== "apiKey") {
+    throw new Error(`Anthropic auth mode ${auth.authMode} is not implemented yet.`);
+  }
+
+  const apiKey = auth.credentials.apiKey?.trim();
+
+  if (!apiKey) {
+    throw new Error("Anthropic API key is not configured.");
+  }
+
+  const cacheKey = `${auth.provider}:${auth.authMode}:${apiKey}`;
+  const existing = anthropicClientCache.get(cacheKey);
+
+  if (existing) {
+    return existing;
+  }
+
+  const client = new Anthropic({ apiKey });
+  anthropicClientCache.set(cacheKey, client);
+  return client;
 }
 
 function extractTextFromAnthropicBlocks(blocks: Anthropic.Messages.Message["content"]): string {
@@ -80,18 +179,18 @@ function parseJson<T>(raw: string): T {
   }
 }
 
-function getCheapModel() {
-  const provider = getProvider(DEFAULT_MODEL);
-  return provider === "anthropic" ? DEFAULT_CHEAP_ANTHROPIC_MODEL : DEFAULT_CHEAP_OPENAI_MODEL;
+function getCheapModel(config?: AIConfigInput) {
+  const resolved = resolveAIConfig(config);
+  return resolved.provider === "anthropic" ? DEFAULT_CHEAP_ANTHROPIC_MODEL : DEFAULT_CHEAP_OPENAI_MODEL;
 }
 
-export async function callAI(prompt: string, model = DEFAULT_MODEL): Promise<string> {
-  const provider = getProvider(model);
+export async function callAI(prompt: string, config?: AIConfigInput): Promise<string> {
+  const resolved = resolveAIConfig(config);
 
-  if (provider === "openai") {
-    const client = getOpenAIClient();
+  if (resolved.provider === "openai") {
+    const client = getOpenAIClient(resolved.auth);
     const response = await client.chat.completions.create({
-      model,
+      model: resolved.model,
       temperature: 0,
       messages: [{ role: "user", content: prompt }],
     });
@@ -105,9 +204,9 @@ export async function callAI(prompt: string, model = DEFAULT_MODEL): Promise<str
     return content;
   }
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient(resolved.auth);
   const response = await client.messages.create({
-    model,
+    model: resolved.model,
     max_tokens: 1024,
     temperature: 0,
     messages: [{ role: "user", content: prompt }],
@@ -122,7 +221,7 @@ export async function callAI(prompt: string, model = DEFAULT_MODEL): Promise<str
   return content;
 }
 
-export async function extractDeadlines(text: string): Promise<DeadlinesResult> {
+export async function extractDeadlines(text: string, config?: AIConfigInput): Promise<DeadlinesResult> {
   const prompt = [
     "Extract all deadlines from the text below.",
     'Return ONLY valid JSON, with no markdown and no explanation, in exactly this shape:',
@@ -134,7 +233,7 @@ export async function extractDeadlines(text: string): Promise<DeadlinesResult> {
     text,
   ].join("\n\n");
 
-  const result = parseJson<DeadlinesResult>(await callAI(prompt, getCheapModel()));
+  const result = parseJson<DeadlinesResult>(await callAI(prompt, getCheapModel(config)));
 
   return {
     deadlines: Array.isArray(result.deadlines)
@@ -147,7 +246,7 @@ export async function extractDeadlines(text: string): Promise<DeadlinesResult> {
   };
 }
 
-export async function classifyFile(filename: string, text: string): Promise<FileClassification> {
+export async function classifyFile(filename: string, text: string, config?: AIConfigInput): Promise<FileClassification> {
   const preview = text.trim().slice(0, 4000);
   const prompt = [
     "Classify this study file.",
@@ -162,7 +261,7 @@ export async function classifyFile(filename: string, text: string): Promise<File
     preview,
   ].join("\n\n");
 
-  const result = parseJson<FileClassification>(await callAI(prompt, getCheapModel()));
+  const result = parseJson<FileClassification>(await callAI(prompt, getCheapModel(config)));
   const allowedTypes = new Set(["lecture", "tutorial", "assignment", "other"]);
   const normalizedType = allowedTypes.has(result.file_type) ? result.file_type : "other";
   const normalizedWeekNumber =
