@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse";
 
-import { callAI, classifyFile, extractDeadlines } from "@/lib/ai";
+import { callAI, classifyFile, extractDeadlines, getProvider } from "@/lib/ai";
 import {
   getAnnouncements,
   getAssignments,
@@ -80,18 +80,18 @@ function sanitizeText(value: string | null | undefined): string {
 function stripHtml(html: string): string {
   return html
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script[^>]*>/gi, " ")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&#x27;/gi, "'")
     .replace(/&#x2F;/gi, "/")
+    .replace(/&amp;/gi, "&")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
@@ -168,7 +168,7 @@ async function ensurePhase1User(): Promise<UserRow> {
     .from("users")
     .insert({
       email: process.env.PHASE1_USER_EMAIL?.trim() || DEFAULT_PHASE1_USER_EMAIL,
-      ai_provider: process.env.AI_MODEL?.toLowerCase().startsWith("claude") ? "anthropic" : "openai",
+      ai_provider: getProvider(process.env.AI_MODEL?.trim() || "claude-haiku-4-5"),
       ai_model: process.env.AI_MODEL?.trim() || null,
     })
     .select("id, email, last_synced_at")
