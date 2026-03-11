@@ -31,11 +31,8 @@ type AnnouncementSummary = {
 type ChatPreview = {
   activeModule: string;
   suggestedPrompts: string[];
-  recentMessages: Array<{
-    id: string;
-    role: "assistant" | "user";
-    content: string;
-  }>;
+  helperText: string;
+  readyLabel: string;
 };
 
 type DashboardData = {
@@ -139,25 +136,9 @@ const FALLBACK_DASHBOARD: DashboardData = {
       "Summarise the latest announcements.",
       "What changed since my last lecture?",
     ],
-    recentMessages: [
-      {
-        id: "assistant-1",
-        role: "assistant",
-        content:
-          "I can answer questions across your modules once sync data is available. The UI is ready for the chat route to plug in later.",
-      },
-      {
-        id: "user-1",
-        role: "user",
-        content: "What should I focus on tonight?",
-      },
-      {
-        id: "assistant-2",
-        role: "assistant",
-        content:
-          "Start with anything marked due soon, then skim high-importance announcements for hidden deadlines or format changes.",
-      },
-    ],
+    helperText:
+      "Chat stays quiet until sync data is ready, then this panel can plug into the real RAG route.",
+    readyLabel: "Waiting for synced course context",
   },
 };
 
@@ -168,6 +149,7 @@ const weekdayFormatter = new Intl.DateTimeFormat("en-SG", {
 });
 
 const relativeFormatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const NAV_ITEMS = ["Home", "Planner", "Changes", "Settings"] as const;
 
 function startOfToday() {
   const now = new Date();
@@ -322,7 +304,9 @@ async function loadDashboardData(): Promise<DashboardData> {
           "Summarise the latest announcement for this module.",
           "What should I revise before tutorial?",
         ],
-        recentMessages: FALLBACK_DASHBOARD.chat.recentMessages,
+        helperText:
+          "Chat stays quiet until sync data is ready, then this panel can connect to the real study assistant.",
+        readyLabel: "Ready for synced course context",
       },
     };
   } catch {
@@ -359,7 +343,7 @@ function Badge({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles[tone]}`}
+      className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles[tone]}`}
     >
       {children}
     </span>
@@ -378,13 +362,13 @@ function SectionHeading({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200/70 px-5 py-5 sm:px-6">
-      <div>
+    <div className="flex flex-col gap-4 border-b border-slate-200/70 px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">{kicker}</p>
         <h2 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{title}</h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">{subtitle}</p>
       </div>
-      {action}
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }
@@ -398,52 +382,46 @@ export default async function Home() {
   const primaryModule = dashboard.modules[0];
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(167,139,250,0.20),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.16),_transparent_24%),linear-gradient(180deg,_#f8faff_0%,_#eef3ff_100%)] text-slate-900">
+    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(167,139,250,0.20),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.16),_transparent_24%),linear-gradient(180deg,_#f8faff_0%,_#eef3ff_100%)] text-slate-900">
       <div className="mx-auto w-full max-w-[1380px] px-3 pb-6 pt-3 sm:px-5 sm:pb-8 sm:pt-5 xl:px-6">
         <header className="sticky top-3 z-30 rounded-[26px] border border-white/70 bg-white/75 px-4 py-4 shadow-[0_12px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:px-5 lg:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm lg:hidden"
-                aria-label="Toggle modules"
-              >
-                ☰
-              </button>
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#7c3aed_62%,#ec4899)] text-xs font-extrabold tracking-[0.18em] text-white shadow-[0_16px_30px_rgba(99,102,241,0.25)]">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#7c3aed_62%,#ec4899)] text-xs font-extrabold tracking-[0.18em] text-white shadow-[0_16px_30px_rgba(99,102,241,0.25)]">
                 SX
               </div>
-              <div>
-                <p className="font-serif text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+              <div className="min-w-0">
+                <p className="truncate font-serif text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
                   Studex
                 </p>
-                <p className="text-sm text-slate-500">Study command center for Aiden</p>
+                <p className="truncate text-sm text-slate-500">Study command center for Aiden</p>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 lg:items-end">
-              <nav className="hidden items-center gap-2 lg:flex">
-                {([
-                  ["Home", true],
-                  ["Planner", false],
-                  ["Changes", false],
-                  ["Settings", false],
-                ] as const).map(([label, active]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                      active
-                        ? "bg-blue-50 text-slate-950"
-                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
+            <div className="flex min-w-0 flex-col gap-3 xl:items-end">
+              <div className="-mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <nav className="flex min-w-max items-center gap-2 px-1">
+                  {NAV_ITEMS.map((label, index) => {
+                    const active = index === 0;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        aria-current={active ? "page" : undefined}
+                        className={`rounded-2xl px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                          active
+                            ? "bg-blue-50 text-slate-950"
+                            : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:justify-end">
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between xl:justify-end">
                 <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   <Badge tone={dashboard.source === "live" ? "success" : "warn"}>
                     {dashboard.source === "live" ? "Live data" : "Fallback data"}
@@ -459,7 +437,7 @@ export default async function Home() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
                   <button
                     type="button"
                     className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300"
@@ -479,7 +457,7 @@ export default async function Home() {
         </header>
 
         <div className="mt-4 grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start">
-          <aside className="xl:sticky xl:top-[112px] xl:max-h-[calc(100vh-132px)] xl:overflow-auto">
+          <aside className="min-w-0 xl:sticky xl:top-[112px] xl:max-h-[calc(100vh-132px)] xl:overflow-auto">
             <div className="rounded-[28px] border border-white/70 bg-white/78 p-4 shadow-[0_14px_42px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:p-5">
               <div className="px-1 pb-3">
                 <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
@@ -494,20 +472,20 @@ export default async function Home() {
                 {dashboard.modules.map((module, index) => (
                   <article
                     key={module.id}
-                    className={`rounded-[22px] border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${
+                    className={`min-w-0 rounded-[22px] border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${
                       index === 0
                         ? "border-blue-200/80 bg-[linear-gradient(180deg,rgba(239,246,255,0.95),rgba(255,255,255,0.98))] shadow-[0_10px_28px_rgba(37,99,235,0.08)]"
                         : "border-slate-200/80 bg-slate-50/85"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs font-extrabold tracking-[0.12em] text-slate-700">
                           {module.code}
                         </p>
                         <p className="mt-2 text-sm leading-6 text-slate-600">{module.title}</p>
                       </div>
-                      <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-white">
+                      <span className="shrink-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-white">
                         {module.taskCount + module.announcementCount}
                       </span>
                     </div>
@@ -521,9 +499,9 @@ export default async function Home() {
               </div>
 
               <div className="mt-4 rounded-[22px] border border-slate-200/80 bg-slate-50/80 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Flow note</p>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sync note</p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  The shell now mirrors the approved Studex-style navigation frame while keeping the current data pipeline untouched.
+                  Run your first sync to replace the sample fallback cards with live Canvas content.
                 </p>
               </div>
             </div>
@@ -532,16 +510,16 @@ export default async function Home() {
           <section className="min-w-0">
             <div className="rounded-[30px] border border-white/70 bg-white/70 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5 lg:p-6">
               <div className="flex flex-col gap-5 border-b border-slate-200/70 pb-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="max-w-3xl">
+                <div className="max-w-3xl min-w-0">
                   <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-blue-700">
                     Home
                   </span>
-                  <h1 className="mt-4 font-serif text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+                  <h1 className="mt-4 text-balance font-serif text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
                     Good evening, Aiden.
                   </h1>
                   <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500 sm:text-[15px]">
                     Focus on what changed, what is due next, and what deserves attention tonight.
-                    Studex keeps the dashboard frame clean even when Canvas content is messy.
+                    Studex keeps the dashboard clean even when Canvas content is messy.
                   </p>
                 </div>
 
@@ -554,15 +532,15 @@ export default async function Home() {
                     Prioritise urgent tasks first, then skim high-signal announcements for hidden deadline or format changes.
                   </p>
                   <div className="mt-5 grid grid-cols-3 gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-2xl font-semibold">{dashboard.tasks.length}</p>
                       <p className="text-xs text-white/70">Open tasks</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-2xl font-semibold">{dashboard.announcements.length}</p>
                       <p className="text-xs text-white/70">Updates</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-2xl font-semibold">{dueSoonCount}</p>
                       <p className="text-xs text-white/70">Urgent</p>
                     </div>
@@ -580,7 +558,7 @@ export default async function Home() {
                       This week at a glance
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                      A cleaner command-center overview for weekly workload, recent module activity, and what to tackle next.
+                      A cleaner overview for weekly workload, recent activity, and what to tackle next.
                     </p>
                   </div>
 
@@ -598,12 +576,17 @@ export default async function Home() {
                   <div className="bg-white p-5 sm:p-6">
                     <div className="space-y-3">
                       {dashboard.tasks.slice(0, 3).map((task) => (
-                        <div key={task.id} className="flex items-start justify-between gap-3 border-b border-slate-200/70 pb-3 last:border-b-0 last:pb-0">
-                          <div>
+                        <div
+                          key={task.id}
+                          className="flex items-start justify-between gap-3 border-b border-slate-200/70 pb-3 last:border-b-0 last:pb-0"
+                        >
+                          <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-900">{task.title}</p>
                             <p className="mt-1 text-sm text-slate-500">{task.moduleCode}</p>
                           </div>
-                          <Badge tone={toneForTask(task.status)}>{task.dueLabel}</Badge>
+                          <div className="shrink-0">
+                            <Badge tone={toneForTask(task.status)}>{task.dueLabel}</Badge>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -645,7 +628,7 @@ export default async function Home() {
                     <SectionHeading
                       kicker="What changed"
                       title="Recent announcements"
-                      subtitle="Teaching updates surfaced with stronger card hierarchy and room for AI summaries."
+                      subtitle="Teaching updates with cleaner hierarchy and calmer spacing."
                       action={<Badge tone="default">{dashboard.announcements.length} items</Badge>}
                     />
                     <div>
@@ -673,42 +656,37 @@ export default async function Home() {
                     <SectionHeading
                       kicker="Action queue"
                       title="AI study chat"
-                      subtitle="Shell only for now — framed like the approved prototype, ready for the RAG route later."
+                      subtitle="Kept intentionally quiet until the synced study context is ready."
                     />
 
-                    <div className="px-5 pb-5 pt-5 sm:px-6 sm:pb-6">
+                    <div className="space-y-4 px-5 pb-5 pt-5 sm:px-6 sm:pb-6">
                       <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/90 p-4 text-sm text-emerald-900">
                         Active scope: <span className="font-semibold">{dashboard.chat.activeModule}</span>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="rounded-[22px] border border-slate-200/80 bg-white/85 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone={dashboard.source === "live" ? "success" : "warn"}>
+                            {dashboard.chat.readyLabel}
+                          </Badge>
+                          <Badge tone="muted">Chat disabled</Badge>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">{dashboard.chat.helperText}</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
                         {dashboard.chat.suggestedPrompts.map((prompt) => (
                           <button
                             key={prompt}
                             type="button"
-                            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300"
                           >
                             {prompt}
                           </button>
                         ))}
                       </div>
 
-                      <div className="mt-5 space-y-3">
-                        {dashboard.chat.recentMessages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`max-w-[92%] rounded-[22px] px-4 py-3 text-sm leading-7 ${
-                              message.role === "assistant"
-                                ? "bg-slate-100 text-slate-700"
-                                : "ml-auto bg-slate-950 text-white"
-                            }`}
-                          >
-                            {message.content}
-                          </div>
-                        ))}
-                      </div>
-
-                      <form className="mt-5 space-y-3">
+                      <form className="space-y-3">
                         <textarea
                           className="min-h-32 w-full resize-none rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white"
                           placeholder="Ask about a lecture, announcement, or what is due this week…"
@@ -716,7 +694,7 @@ export default async function Home() {
                         />
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <p className="text-xs leading-5 text-slate-500">
-                            Chat transport intentionally left untouched. This work only upgrades the production shell and layout system.
+                            Prompt chips stay visible for orientation, but the composer remains disabled until the live chat route is wired up.
                           </p>
                           <button
                             type="submit"
@@ -734,7 +712,7 @@ export default async function Home() {
                     <SectionHeading
                       kicker="Snapshot"
                       title="Module focus"
-                      subtitle="A compact right-column summary panel, similar to the approved prototype’s supporting stack."
+                      subtitle="A compact supporting panel for the current priority view."
                     />
                     <div className="grid gap-px bg-slate-200/80 sm:grid-cols-2">
                       <div className="bg-white p-5 sm:p-6">
@@ -749,10 +727,10 @@ export default async function Home() {
                       <div className="bg-white p-5 sm:p-6">
                         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Shell status</p>
                         <p className="mt-3 text-lg font-semibold tracking-tight text-slate-950">
-                          Prototype-aligned
+                          MVP-ready shell
                         </p>
                         <p className="mt-2 text-sm leading-6 text-slate-500">
-                          Glass top bar, persistent module rail, stronger dashboard hierarchy, and mobile-safe stacking are now built into the real app.
+                          Navigation, spacing, and stacked layouts now stay consistent from phone through desktop.
                         </p>
                       </div>
                     </div>
