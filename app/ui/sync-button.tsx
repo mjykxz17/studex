@@ -71,16 +71,16 @@ export function SyncButton({ initialLastSyncedAt }: { initialLastSyncedAt: strin
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
       <button
         type="button"
         onClick={handleSync}
         disabled={isSyncing}
-        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 disabled:cursor-wait disabled:opacity-70"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 disabled:cursor-wait disabled:opacity-70 sm:w-auto"
       >
         {isSyncing ? "Syncing…" : "Sync now"}
       </button>
-      <p className={`text-right text-xs ${error ? "text-rose-600" : "text-slate-500"}`}>
+      <p className={`text-left text-xs sm:text-right ${error ? "text-rose-600" : "text-slate-500"}`}>
         {error ?? helperText}
       </p>
     </div>
