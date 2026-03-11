@@ -23,7 +23,7 @@ function Badge({ children, tone = "default" }: { children: React.ReactNode; tone
     success: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80",
   } as const;
 
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles[tone]}`}>{children}</span>;
+  return <span className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles[tone]}`}>{children}</span>;
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
@@ -37,13 +37,13 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 
 function SectionHeading({ kicker, title, subtitle, action }: { kicker: string; title: string; subtitle: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200/70 px-5 py-5 sm:px-6">
-      <div>
+    <div className="flex flex-col gap-4 border-b border-slate-200/70 px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">{kicker}</p>
         <h2 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{title}</h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">{subtitle}</p>
       </div>
-      {action}
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }
@@ -55,7 +55,7 @@ export default async function Home() {
   const primaryModule = dashboard.modules[0];
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(167,139,250,0.20),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.16),_transparent_24%),linear-gradient(180deg,_#f8faff_0%,_#eef3ff_100%)] text-slate-900">
+    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(167,139,250,0.20),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.16),_transparent_24%),linear-gradient(180deg,_#f8faff_0%,_#eef3ff_100%)] text-slate-900">
       <div className="mx-auto w-full max-w-[1380px] px-3 pb-6 pt-3 sm:px-5 sm:pb-8 sm:pt-5 xl:px-6">
         <header className="sticky top-3 z-30 rounded-[26px] border border-white/70 bg-white/75 px-4 py-4 shadow-[0_12px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:px-5 lg:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -121,9 +121,9 @@ export default async function Home() {
           <section className="min-w-0">
             <div className="rounded-[30px] border border-white/70 bg-white/70 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-5 lg:p-6">
               <div className="flex flex-col gap-5 border-b border-slate-200/70 pb-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="max-w-3xl">
+                <div className="max-w-3xl min-w-0">
                   <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-blue-700">Home</span>
-                  <h1 className="mt-4 font-serif text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">Good evening, Aiden.</h1>
+                  <h1 className="mt-4 text-balance font-serif text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">Good evening, Aiden.</h1>
                   <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500 sm:text-[15px]">The dashboard is now wired for real data flow: Supabase-backed cards, a manual sync surface, and a chat panel that talks to the RAG endpoint instead of pretending.</p>
                 </div>
 
@@ -210,7 +210,7 @@ export default async function Home() {
                       </div>
                       <div className="bg-white p-5 sm:p-6">
                         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">MVP plumbing</p>
-                        <p className="mt-3 text-lg font-semibold tracking-tight text-slate-950">Server-safe</p>
+                        <p className="mt-3 text-lg font-semibold tracking-tight text-slate-950">MVP-ready shell</p>
                         <p className="mt-2 text-sm leading-6 text-slate-500">Dashboard reads on the server, sync runs through <code>/api/sync</code>, and chat now calls <code>/api/chat</code>. If setup is incomplete, the UI says so plainly instead of faking readiness.</p>
                       </div>
                     </div>
