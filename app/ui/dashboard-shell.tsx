@@ -307,7 +307,9 @@ function AIChatPanel({ dashboard }: { dashboard: DashboardData }) {
 export function DashboardShell({ dashboard }: { dashboard: DashboardData }) {
   const dueSoonCount = dashboard.tasks.filter((task) => task.status === "due-soon").length;
   const highImportanceCount = dashboard.announcements.filter((announcement) => announcement.importance === "high").length;
-  const syncedModuleCount = dashboard.modules.filter((module) => module.lastSyncLabel !== "Awaiting sync").length;
+  const syncedModuleCount = dashboard.modules.filter(
+    (module) => !["Awaiting sync", "Awaiting first Canvas sync"].includes(module.lastSyncLabel),
+  ).length;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.18),transparent_24%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_24%),linear-gradient(180deg,#f7f8ff_0%,#eef3ff_100%)] text-slate-900">
