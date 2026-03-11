@@ -42,7 +42,7 @@ export function SyncModal({
       // Then fetch the list from our DB
       const response = await fetch("/api/modules/list");
       const data = await response.json();
-      setModules(data.modules.map((m: any) => ({
+      setModules(data.modules.map((m: { id: string; code: string; title: string; sync_enabled?: boolean }) => ({
         id: m.id,
         code: m.code,
         title: m.title,

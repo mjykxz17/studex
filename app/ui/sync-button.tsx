@@ -69,9 +69,9 @@ export function SyncButton({ initialLastSyncedAt }: { initialLastSyncedAt: strin
               if (data.status === "complete") {
                 router.refresh();
               }
-            } catch (e) {
-              // Ignore partial JSON chunks
-            }
+            } catch {
+                // Ignore partial JSON chunks
+              }
           }
         }
       }
