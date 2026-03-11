@@ -14,8 +14,12 @@ const requireEnv = (name: string): string => {
 };
 
 export const env = {
-  supabaseUrl: requireEnv("SUPABASE_URL"),
-  supabaseAnonKey: requireEnv("SUPABASE_ANON_KEY"),
+  get supabaseUrl() {
+    return requireEnv("SUPABASE_URL");
+  },
+  get supabaseAnonKey() {
+    return requireEnv("SUPABASE_ANON_KEY");
+  },
   get supabaseServiceKey() {
     return requireEnv("SUPABASE_SERVICE_KEY");
   },
