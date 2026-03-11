@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
+import { DashboardShell } from "./ui/dashboard-shell";
 
-type ModuleSummary = {
+export type ModuleSummary = {
   id: string;
   code: string;
   title: string;
@@ -9,7 +10,7 @@ type ModuleSummary = {
   lastSyncLabel: string;
 };
 
-type WeeklyTask = {
+export type WeeklyTask = {
   id: string;
   title: string;
   moduleCode: string;
@@ -19,7 +20,7 @@ type WeeklyTask = {
   source: string;
 };
 
-type AnnouncementSummary = {
+export type AnnouncementSummary = {
   id: string;
   title: string;
   moduleCode: string;
@@ -28,7 +29,7 @@ type AnnouncementSummary = {
   importance: "high" | "normal" | "low";
 };
 
-type ChatPreview = {
+export type ChatPreview = {
   activeModule: string;
   suggestedPrompts: string[];
   recentMessages: Array<{
@@ -38,7 +39,7 @@ type ChatPreview = {
   }>;
 };
 
-type DashboardData = {
+export type DashboardData = {
   modules: ModuleSummary[];
   tasks: WeeklyTask[];
   announcements: AnnouncementSummary[];
@@ -243,24 +244,27 @@ async function loadDashboardData(): Promise<DashboardData> {
       },
     });
 
-    const [{ data: modulesData, error: modulesError }, { data: tasksData, error: tasksError }, { data: announcementsData, error: announcementsError }] =
-      await Promise.all([
-        supabase
-          .from("modules")
-          .select("id, code, title, last_canvas_sync, tasks(count), announcements(count)")
-          .order("code", { ascending: true }),
-        supabase
-          .from("tasks")
-          .select("id, title, due_at, source, modules(code)")
-          .eq("completed", false)
-          .order("due_at", { ascending: true, nullsFirst: false })
-          .limit(6),
-        supabase
-          .from("announcements")
-          .select("id, title, ai_summary, posted_at, importance, modules(code)")
-          .order("posted_at", { ascending: false, nullsFirst: false })
-          .limit(5),
-      ]);
+    const [
+      { data: modulesData, error: modulesError },
+      { data: tasksData, error: tasksError },
+      { data: announcementsData, error: announcementsError },
+    ] = await Promise.all([
+      supabase
+        .from("modules")
+        .select("id, code, title, last_canvas_sync, tasks(count), announcements(count)")
+        .order("code", { ascending: true }),
+      supabase
+        .from("tasks")
+        .select("id, title, due_at, source, modules(code)")
+        .eq("completed", false)
+        .order("due_at", { ascending: true, nullsFirst: false })
+        .limit(6),
+      supabase
+        .from("announcements")
+        .select("id, title, ai_summary, posted_at, importance, modules(code)")
+        .order("posted_at", { ascending: false, nullsFirst: false })
+        .limit(5),
+    ]);
 
     if (modulesError || tasksError || announcementsError) {
       throw modulesError ?? tasksError ?? announcementsError;
@@ -326,232 +330,8 @@ async function loadDashboardData(): Promise<DashboardData> {
   }
 }
 
-function Badge({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "warn" | "danger" | "muted" }) {
-  const styles = {
-    default: "bg-slate-100 text-slate-700",
-    warn: "bg-amber-100 text-amber-800",
-    danger: "bg-rose-100 text-rose-700",
-    muted: "bg-slate-900/5 text-slate-600",
-  } as const;
-
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${styles[tone]}`}>
-      {children}
-    </span>
-  );
-}
-
-function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
-
 export default async function Home() {
   const dashboard = await loadDashboardData();
 
-  return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 xl:flex-row xl:p-8">
-        <aside className="xl:w-80 xl:flex-none">
-          <div className="sticky top-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-emerald-600">Studex</p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                  Dashboard
-                </h1>
-              </div>
-              <Badge tone={dashboard.source === "live" ? "default" : "warn"}>
-                {dashboard.source === "live" ? "Live data" : "Fallback data"}
-              </Badge>
-            </div>
-
-            <div className="mt-6 rounded-2xl bg-slate-950 p-4 text-slate-50">
-              <p className="text-sm text-slate-300">This week at a glance</p>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-3xl font-semibold">{dashboard.tasks.length}</p>
-                  <p className="text-sm text-slate-300">Open tasks</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-semibold">{dashboard.announcements.length}</p>
-                  <p className="text-sm text-slate-300">Recent updates</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <SectionHeading
-                title="Modules"
-                subtitle="Server-rendered list wired for Canvas-backed modules."
-              />
-              <div className="mt-4 space-y-3">
-                {dashboard.modules.map((module) => (
-                  <article
-                    key={module.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{module.code}</p>
-                        <p className="mt-1 text-sm text-slate-600">{module.title}</p>
-                      </div>
-                      <Badge tone="muted">{module.lastSyncLabel}</Badge>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Badge>{module.taskCount} tasks</Badge>
-                      <Badge>{module.announcementCount} announcements</Badge>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <section className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-          <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <SectionHeading
-                title="Weekly task view"
-                subtitle="Assignments and extracted deadlines grouped into one focused list."
-              />
-              <div className="mt-5 space-y-3">
-                {dashboard.tasks.map((task) => (
-                  <article
-                    key={task.id}
-                    className="flex flex-col gap-4 rounded-2xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-900">{task.title}</p>
-                        <Badge
-                          tone={
-                            task.status === "due-soon"
-                              ? "danger"
-                              : task.status === "upcoming"
-                                ? "warn"
-                                : "muted"
-                          }
-                        >
-                          {task.moduleCode}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-500">{task.source}</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Badge
-                        tone={
-                          task.status === "due-soon"
-                            ? "danger"
-                            : task.status === "upcoming"
-                              ? "warn"
-                              : "muted"
-                        }
-                      >
-                        {task.dueLabel}
-                      </Badge>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <SectionHeading
-                title="Recent announcements"
-                subtitle="Important teaching updates surfaced with room for AI summaries and extracted deadlines."
-              />
-              <div className="mt-5 space-y-3">
-                {dashboard.announcements.map((announcement) => (
-                  <article key={announcement.id} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-900">{announcement.title}</p>
-                      <Badge
-                        tone={
-                          announcement.importance === "high"
-                            ? "danger"
-                            : announcement.importance === "low"
-                              ? "muted"
-                              : "default"
-                        }
-                      >
-                        {announcement.moduleCode}
-                      </Badge>
-                      <Badge tone="muted">{announcement.postedLabel}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">{announcement.summary}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <SectionHeading
-              title="AI study chat"
-              subtitle="UI shell only for now — ready for the Phase 1 RAG endpoint to plug in later."
-            />
-
-            <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
-              Active scope: <span className="font-semibold">{dashboard.chat.activeModule}</span>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {dashboard.chat.suggestedPrompts.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 transition hover:border-slate-300 hover:bg-white"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {dashboard.chat.recentMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-6 ${
-                    message.role === "assistant"
-                      ? "bg-slate-100 text-slate-700"
-                      : "ml-auto bg-slate-950 text-slate-50"
-                  }`}
-                >
-                  {message.content}
-                </div>
-              ))}
-            </div>
-
-            <form className="mt-5 space-y-3">
-              <textarea
-                className="min-h-32 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white"
-                placeholder="Ask about a lecture, announcement, or what is due this week…"
-                disabled
-              />
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-slate-500">
-                  Chat transport intentionally left untouched. This page only provides the production-ready shell.
-                </p>
-                <button
-                  type="submit"
-                  disabled
-                  className="rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white opacity-60"
-                >
-                  Send
-                </button>
-              </div>
-            </form>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
+  return <DashboardShell dashboard={dashboard} />;
 }
