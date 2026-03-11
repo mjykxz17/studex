@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { SyncButton } from "@/app/ui/sync-button";
-import type { DashboardData, WeeklyTask, AnnouncementSummary, ModuleSummary } from "@/lib/dashboard";
+import type { DashboardData, WeeklyTask, ModuleSummary } from "@/lib/dashboard";
 
 // --- BREAKPOINT HOOK ---
 function useBreakpoint() {
@@ -16,15 +16,38 @@ function useBreakpoint() {
 }
 
 // --- UTILS & FORMATTING ---
+const MODULE_COLORS: Record<string, string> = {
+  CS3235: "#E8480C",
+  IS4233: "#D97706",
+  IS4231: "#059669",
+  TRA3203: "#7C3AED",
+  GEX1015: "#0891B2",
+};
+const COLOR_PALETTE = ["#6366F1", "#2563EB", "#0891B2", "#059669", "#7C3AED", "#DB2777", "#D97706", "#E8480C"];
+
 function colorForModule(code: string) {
-  const colors: Record<string, string> = {
-    CS3235: "#E8480C",
-    IS4233: "#D97706",
-    IS4231: "#059669",
-    TRA3203: "#7C3AED",
-    GEX1015: "#0891B2",
-  };
-  return colors[code] || "#6366F1";
+  if (MODULE_COLORS[code]) return MODULE_COLORS[code];
+  let hash = 0;
+  for (let i = 0; i < code.length; i++) {
+    hash = (hash * 31 + code.charCodeAt(i)) & 0xffff;
+  }
+  return COLOR_PALETTE[hash % COLOR_PALETTE.length];
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatTodayLabel(): string {
+  return new Intl.DateTimeFormat("en-SG", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 }
 
 function getDaysLeft(dueDate?: string | null) {
@@ -36,11 +59,28 @@ function getDaysLeft(dueDate?: string | null) {
 }
 
 function renderMsg(text: string) {
-  return text.split(/\*\*(.*?)\*\*/g).map((p, j) => j % 2 === 1 ? <strong key={j}>{p}</strong> : p);
+  return text.split('\n').flatMap((line, lineIndex) => {
+    const parts = line.split(/\*\*(.*?)\*\*/g).map((p, j) =>
+      j % 2 === 1 ? <strong key={`${lineIndex}-${j}`}>{p}</strong> : p
+    );
+    return lineIndex === 0 ? parts : [<br key={`br-${lineIndex}`} />, ...parts];
+  });
 }
 
-// --- STATIC FALLBACK DATA (from v8.1) ---
-const STATIC_MODULE_DETAILS: Record<string, any> = {
+// --- STATIC FALLBACK DATA ---
+type StaticModuleDetail = {
+  lecturer: string;
+  week_topic: string;
+  week_summary: string;
+  weights: { component: string; weight: string; deadline: string }[];
+  nusmods: {
+    mc: number;
+    faculty?: string;
+    lessons: { type: string; day: string; time: string; venue: string }[];
+    exam: { date: string; time: string; venue: string; duration: string };
+  };
+};
+const STATIC_MODULE_DETAILS: Record<string, StaticModuleDetail> = {
   CS3235: {
     lecturer: "Dr. Liang Zhenkai",
     weights: [{ component: "Assignments (×4)", weight: "20%", deadline: "Ongoing" }, { component: "Midterm Exam", weight: "25%", deadline: "22 Mar 2026" }, { component: "Labs (×3)", weight: "15%", deadline: "Ongoing" }, { component: "Final Exam", weight: "40%", deadline: "Apr 2026" }],
@@ -78,17 +118,7 @@ const STATIC_MODULE_DETAILS: Record<string, any> = {
   },
 };
 
-const MODULE_FILES: Record<string, any[]> = {
-  CS3235: [
-    { name: "Lecture 9 – Format String Attacks.pdf", type: "pdf", category: "Lecture", week: 9, size: "3.2 MB", uploaded: "Today", summary: "Covers %n format string primitive for arbitrary writes, positional argument syntax, printf stack layout, and GOT entry overwrite." },
-    { name: "HW3 – Buffer Overflow Lab.pdf", type: "pdf", category: "Assignment", week: 9, size: "512 KB", uploaded: "3 days ago", summary: "Exploit a format string vulnerability to overwrite a GOT entry and redirect to win(). Submit exploit.py via Canvas." },
-  ],
-  IS4233: [
-    { name: "Week 9 – Data Protection Frameworks.pdf", type: "pdf", category: "Lecture", week: 9, size: "2.6 MB", uploaded: "Yesterday", summary: "Comparative analysis of GDPR Article 6, Singapore PDPA, and China PIPL." },
-  ]
-};
-
-const QUIZ_BANK: Record<string, any[]> = {
+const QUIZ_BANK: Record<string, { q: string; options: string[]; answer: number; explanation: string }[]> = {
   CS3235: [
     { q: "What does the %n format specifier do in printf?", options: ["Prints a newline", "Writes bytes-printed-so-far to a pointer", "Prints a null-terminated string", "Reads from stdin"], answer: 1, explanation: "%n writes the count of characters printed so far into the memory address of the matching argument." },
     { q: "In x86-64, which register holds the 6th argument?", options: ["%rdi", "%rsi", "%r9", "Stack"], answer: 2, explanation: "System V AMD64 ABI passes first 6 args in rdi, rsi, rdx, rcx, r8, r9." },
@@ -100,10 +130,6 @@ const ACADEMIC_TREE = [
   { year: 3, label: "Year 3", semesters: [{ sem: 2, label: "Sem 2  Now", modules: [{ code: "CS3235", name: "Computer Security", mc: 4, grade: null, status: "current", color: "#E8480C", tags: ["security"] }, { code: "IS4233", name: "IT Law", mc: 4, grade: null, status: "current", color: "#D97706", tags: ["law"] }] }] },
   { year: 4, label: "Year 4", semesters: [{ sem: 1, label: "Sem 1 — AI Pick", modules: [{ code: "CS4236", name: "Cryptography Theory", mc: 4, grade: null, status: "recommended", color: "#6366F1", tags: ["cryptography"], prereqs: ["CS3235"], aiReason: "Direct extension of CS3235. Goes deeper into provable security." }] }] }
 ];
-
-const ALL_TREE_MODS = ACADEMIC_TREE.flatMap(y => y.semesters.flatMap(s => s.modules.map(m => ({ ...m, year: y.year, sem: s.sem }))));
-const GRADE_POINTS: Record<string, number> = { "A+": 5.0, "A": 5.0, "A-": 4.5, "B+": 4.0, "B": 3.5, "B-": 3.0, "C+": 2.5, "C": 2.0 };
-const GPA = "4.25";
 
 // --- THEMES ---
 const LIGHT = {
@@ -134,21 +160,53 @@ function Badge({ color, children }: { color: string, children: React.ReactNode }
   );
 }
 
-function BottomNav({ T, view, setView }: { T: any, view: string, setView: (v: string) => void }) {
-  const tabs = [
-    { key: "home", icon: "⌂", label: "Home" },
-    { key: "nusmods", icon: "📅", label: "NUSMods" },
-    { key: "planner", icon: "◉", label: "Planner" },
-    { key: "manage", icon: "⚙", label: "Manage" }
+function BottomNav({ T, view, setView }: { T: typeof LIGHT, view: string, setView: (v: string) => void }) {
+  const tabs: { key: string; label: string; icon: React.ReactNode }[] = [
+    {
+      key: "home",
+      label: "Home",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" /><polyline points="9 21 9 12 15 12 15 21" />
+        </svg>
+      ),
+    },
+    {
+      key: "nusmods",
+      label: "NUSMods",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      ),
+    },
+    {
+      key: "planner",
+      label: "Planner",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+      ),
+    },
+    {
+      key: "manage",
+      label: "Manage",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+        </svg>
+      ),
+    },
   ];
   return (
     <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: 60, background: T.bottomNav, borderTop: "1px solid " + T.border, display: "flex", zIndex: 400 }}>
       {tabs.map(t => {
         const isActive = view === t.key;
         return (
-          <div key={t.key} onClick={() => setView(t.key)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", gap: 2 }}>
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{t.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 400, color: isActive ? "#3B82F6" : T.textFaint }}>{t.label}</span>
+          <div key={t.key} onClick={() => setView(t.key)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", gap: 3, color: isActive ? "#3B82F6" : T.textFaint }}>
+            {t.icon}
+            <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 400 }}>{t.label}</span>
           </div>
         );
       })}
@@ -175,7 +233,7 @@ function Chk({ done, color, onToggle, size = 16 }: { done: boolean, color: strin
   );
 }
 
-function Card({ T, title, children, badge, badgeColor, maxH }: { T: any, title: string, children: React.ReactNode, badge?: string, badgeColor?: string, maxH?: number | string }) {
+function Card({ T, title, children, badge, badgeColor, maxH }: { T: typeof LIGHT, title: string, children: React.ReactNode, badge?: string, badgeColor?: string, maxH?: number | string }) {
   return (
     <div style={{ background: T.surface, border: "1px solid " + T.border, borderRadius: 8, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "10px 14px", borderBottom: "1px solid " + T.borderLight, display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -189,20 +247,30 @@ function Card({ T, title, children, badge, badgeColor, maxH }: { T: any, title: 
   );
 }
 
-function Empty({ T, text }: { T: any, text: string }) {
+function Empty({ T, text }: { T: typeof LIGHT, text: string }) {
   return <div style={{ padding: "20px 16px", fontSize: 13, color: T.textFaint, textAlign: "center" }}>{text}</div>;
 }
 
-function AISidebar({ T, dark, isMobile, userId }: { T: any, dark: boolean, isMobile: boolean, userId: string | null }) {
+function AISidebar({ T, dark, isMobile, userId }: { T: typeof LIGHT, dark: boolean, isMobile: boolean, userId: string | null }) {
   const [msgs, setMsgs] = useState([{ role: "ai", text: "What's on your plate? Ask me about deadlines, exams, or any module." }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [msgs]);
 
   const send = async () => {
     const q = input.trim();
-    if (!q || loading || !userId) return;
+    if (!q || loading) return;
+    if (!userId) {
+      setMsgs(m => [...m, { role: "user", text: q }, { role: "ai", text: "Please run a sync first so I have a user account and course data to work with." }]);
+      setInput("");
+      return;
+    }
     setInput("");
     setMsgs(m => [...m, { role: "user", text: q }]);
     setLoading(true);
@@ -214,9 +282,13 @@ function AISidebar({ T, dark, isMobile, userId }: { T: any, dark: boolean, isMob
         body: JSON.stringify({ message: q, userId }),
       });
       const payload = await response.json();
-      setMsgs(m => [...m, { role: "ai", text: payload.answer || "No answer returned." }]);
-    } catch (err) {
-      setMsgs(m => [...m, { role: "ai", text: "Sorry, I encountered an error." }]);
+      if (!response.ok) {
+        setMsgs(m => [...m, { role: "ai", text: payload.error || "Something went wrong. Please try again." }]);
+      } else {
+        setMsgs(m => [...m, { role: "ai", text: payload.answer || "No answer returned." }]);
+      }
+    } catch {
+      setMsgs(m => [...m, { role: "ai", text: "Network error. Check your connection and try again." }]);
     } finally {
       setLoading(false);
     }
@@ -233,16 +305,15 @@ function AISidebar({ T, dark, isMobile, userId }: { T: any, dark: boolean, isMob
         </div>
         <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#6366F1,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>✦</div>
       </div>
-      <div style={{ overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, background: T.termBg }}>
+      <div ref={containerRef} style={{ overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, background: T.termBg }}>
         {msgs.map((m, i) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-            <div style={{ maxWidth: "90%", padding: "7px 11px", borderRadius: m.role === "user" ? "11px 11px 3px 11px" : "11px 11px 11px 3px", background: m.role === "user" ? T.termUserBg : T.termAiBg, color: m.role === "user" ? T.termUserText : T.termAiText, fontSize: 12.5, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+            <div style={{ maxWidth: "90%", padding: "7px 11px", borderRadius: m.role === "user" ? "11px 11px 3px 11px" : "11px 11px 11px 3px", background: m.role === "user" ? T.termUserBg : T.termAiBg, color: m.role === "user" ? T.termUserText : T.termAiText, fontSize: 12.5, lineHeight: 1.6 }}>
               {renderMsg(m.text)}
             </div>
           </div>
         ))}
         {loading && <div style={{ display: "flex" }}><div style={{ padding: "7px 11px", borderRadius: "11px 11px 11px 3px", background: T.termAiBg, color: T.textFaint, letterSpacing: 3 }}>···</div></div>}
-        <div ref={endRef} />
       </div>
       <div style={{ padding: "6px 10px", display: "flex", gap: 5, overflowX: "auto", borderBottom: "1px solid " + T.borderLight }}>
         {suggestions.map(s => (
@@ -252,15 +323,15 @@ function AISidebar({ T, dark, isMobile, userId }: { T: any, dark: boolean, isMob
         ))}
       </div>
       <div style={{ padding: "8px 10px", display: "flex", gap: 7 }}>
-        <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Ask anything…" style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid " + T.inputBorder, background: T.inputBg, color: T.text, fontSize: 12.5 }} />
-        <button onClick={send} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: dark ? "#EFEFEF" : "#1C1917", color: dark ? "#111" : "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>→</button>
+        <input aria-label="Chat message" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void send(); }} placeholder={userId ? "Ask anything…" : "Sync first to enable chat…"} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid " + T.inputBorder, background: T.inputBg, color: T.text, fontSize: 12.5 }} />
+        <button aria-label="Send message" onClick={() => void send()} disabled={loading} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: dark ? "#EFEFEF" : "#1C1917", color: dark ? "#111" : "#fff", fontSize: 12, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", flexShrink: 0, opacity: loading ? 0.6 : 1 }}>→</button>
       </div>
     </div>
   );
 }
 
 // --- HOME VIEW ---
-function HomeView({ T, data, taskStatus, seenChanges, onToggleTask, onMarkSeen, dark, isMobile, isTablet }: { T: any, data: DashboardData, taskStatus: any, seenChanges: any, onToggleTask: any, onMarkSeen: any, dark: boolean, isMobile: boolean, isTablet: boolean }) {
+function HomeView({ T, data, taskStatus, seenChanges, onToggleTask, onMarkSeen, dark, isMobile, isTablet }: { T: typeof LIGHT, data: DashboardData, taskStatus: Record<string, boolean>, seenChanges: Record<string, boolean>, onToggleTask: (id: string) => void, onMarkSeen: (id: string) => void, dark: boolean, isMobile: boolean, isTablet: boolean }) {
   const upcomingTasks = data.tasks.filter(t => !taskStatus[t.id]);
   const unseenChanges = data.announcements.filter(c => !seenChanges[c.id]);
   const enabledModules = data.modules.filter(m => m.sync_enabled);
@@ -269,8 +340,8 @@ function HomeView({ T, data, taskStatus, seenChanges, onToggleTask, onMarkSeen, 
     <div style={{ padding: isMobile ? "14px" : "20px 24px", maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18, gap: 12, flexDirection: isMobile ? "column" : "row" }}>
         <div>
-          <h1 style={{ fontFamily: "'Lora',serif", fontWeight: 400, fontSize: 22, color: T.text, letterSpacing: "-0.2px" }}>Good afternoon, Aiden.</h1>
-          <p style={{ fontSize: 12, color: T.textFaint, marginTop: 2 }}>Tuesday, 10 March 2026 · Week 9 · AY2025/26 Sem 2</p>
+          <h1 style={{ fontFamily: "'Lora',serif", fontWeight: 400, fontSize: 22, color: T.text, letterSpacing: "-0.2px" }}>{getGreeting()}, Aiden.</h1>
+          <p style={{ fontSize: 12, color: T.textFaint, marginTop: 2 }}>{formatTodayLabel()}</p>
         </div>
       </div>
 
@@ -299,8 +370,19 @@ function HomeView({ T, data, taskStatus, seenChanges, onToggleTask, onMarkSeen, 
               </div>
             </Card>
 
-            <Card T={T} title="Recent Announcements">
-              {unseenChanges.length === 0 && <Empty T={T} text="No new updates." />}
+            <Card T={T} title="Recent Announcements" badge={unseenChanges.length > 0 ? unseenChanges.length + " new" : undefined} badgeColor="#2563EB">
+              {unseenChanges.length > 0 && (
+                <div style={{ padding: "6px 14px", borderBottom: "1px solid " + T.borderLight, display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => unseenChanges.forEach(c => onMarkSeen(c.id))}
+                    aria-label={`Mark all ${unseenChanges.length} announcements as read`}
+                    style={{ background: "transparent", border: "none", color: T.textMuted, fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, padding: "2px 0" }}
+                  >
+                    Mark all as read
+                  </button>
+                </div>
+              )}
+              {unseenChanges.length === 0 && <Empty T={T} text="All caught up — no new announcements." />}
               {unseenChanges.map((c, i) => (
                 <div key={c.id} onClick={() => onMarkSeen(c.id)} style={{ padding: "12px 14px", borderBottom: i < unseenChanges.length - 1 ? "1px solid " + T.borderLight : "none", cursor: "pointer" }}>
                   <div style={{ display: "flex", gap: 6, marginBottom: 4, alignItems: "center" }}>
@@ -337,7 +419,7 @@ function HomeView({ T, data, taskStatus, seenChanges, onToggleTask, onMarkSeen, 
 }
 
 // --- MANAGE VIEW ---
-function ManageView({ T, modules, onToggleSync, isMobile }: { T: any, modules: ModuleSummary[], onToggleSync: (moduleId: string, enabled: boolean) => void, isMobile: boolean }) {
+function ManageView({ T, modules, onToggleSync, isMobile }: { T: typeof LIGHT, modules: ModuleSummary[], onToggleSync: (moduleId: string, enabled: boolean) => void, isMobile: boolean }) {
   return (
     <div style={{ padding: isMobile ? "16px 14px" : "24px 32px", maxWidth: 800, margin: "0 auto" }}>
       <h2 style={{ fontFamily: "'Lora',serif", fontWeight: 600, fontSize: 24, color: T.text, marginBottom: 8 }}>Module Management</h2>
@@ -373,13 +455,13 @@ function ManageView({ T, modules, onToggleSync, isMobile }: { T: any, modules: M
 }
 
 // --- NUSMODS VIEW ---
-function NUSModsView({ T, isMobile, modules }: { T: any, isMobile: boolean, modules: ModuleSummary[] }) {
+function NUSModsView({ T, isMobile, modules }: { T: typeof LIGHT, isMobile: boolean, modules: ModuleSummary[] }) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const slots = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 
   const allLessons = modules.flatMap(m => {
-    const lessons = m.nusmods?.lessons || STATIC_MODULE_DETAILS[m.code]?.nusmods?.lessons || [];
-    return lessons.map((l: any) => ({ ...l, mod: { ...m, color: colorForModule(m.code) } }));
+    const lessons = (m.nusmods?.lessons ?? STATIC_MODULE_DETAILS[m.code]?.nusmods?.lessons ?? []) as { day: string; time: string; type: string; venue: string }[];
+    return lessons.map(l => ({ ...l, mod: { ...m, color: colorForModule(m.code) } }));
   });
 
   const getLesson = (day: string, time: string) => allLessons.find(l => l.day === day && l.time.startsWith(time));
@@ -463,7 +545,21 @@ function NUSModsView({ T, isMobile, modules }: { T: any, isMobile: boolean, modu
 }
 
 // --- PLANNER VIEW ---
-function PlannerDetail({ T, mod, dark, isMobile, onClose }: { T: any, mod: any, dark: boolean, isMobile?: boolean, onClose: () => void }) {
+type PlannerMod = {
+  code: string;
+  name: string;
+  mc: number;
+  grade: string | null;
+  status: string;
+  color: string;
+  tags: string[];
+  prereqs?: string[];
+  aiReason?: string;
+  year: number;
+  sem: number;
+};
+
+function PlannerDetail({ T, mod, dark, isMobile, onClose }: { T: typeof LIGHT, mod: PlannerMod, dark: boolean, isMobile?: boolean, onClose: () => void }) {
   const sc = mod.status === "done" ? "#059669" : mod.status === "current" ? mod.color : "#6366F1";
   const sl = mod.status === "done" ? "Completed" : mod.status === "current" ? "In progress" : "AI Recommended";
   return (
@@ -492,11 +588,11 @@ function PlannerDetail({ T, mod, dark, isMobile, onClose }: { T: any, mod: any, 
   );
 }
 
-function PlannerView({ T, dark, isMobile }: { T: any, dark: boolean, isMobile: boolean }) {
-  const [selected, setSelected] = useState<any>(null);
+function PlannerView({ T, dark, isMobile }: { T: typeof LIGHT, dark: boolean, isMobile: boolean }) {
+  const [selected, setSelected] = useState<PlannerMod | null>(null);
   const getCardStyle = (status: string, color: string) => {
     if (status === "done") return { bg: color + "15", borderColor: color + "50", textCol: color, dashed: false };
-    if (status === "current") return { bg: color + "22", borderColor: color, textCol: color, dashed: false, glow: true };
+    if (status === "current") return { bg: color + "22", borderColor: color, textCol: color, dashed: false };
     if (status === "recommended") return { bg: dark ? "#16163A" : "#EEF2FF", borderColor: "#6366F160", textCol: "#6366F1", dashed: true };
     return { bg: "transparent", borderColor: "#ccc", textCol: "#aaa" };
   };
@@ -528,8 +624,9 @@ function PlannerView({ T, dark, isMobile }: { T: any, dark: boolean, isMobile: b
                     <div key={sem.sem} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {sem.modules.map(mod => {
                         const s = getCardStyle(mod.status, mod.color);
+                        const plannerMod: PlannerMod = { ...mod, year: yr.year, sem: sem.sem };
                         return (
-                          <div key={mod.code} onClick={() => setSelected(mod)} style={{ background: s.bg, border: "1.5px " + (s.dashed ? "dashed" : "solid") + " " + s.borderColor, borderRadius: 8, padding: "8px 10px", cursor: "pointer", minWidth: 140 }}>
+                          <div key={mod.code} onClick={() => setSelected(plannerMod)} style={{ background: s.bg, border: "1.5px " + (s.dashed ? "dashed" : "solid") + " " + s.borderColor, borderRadius: 8, padding: "8px 10px", cursor: "pointer", minWidth: 140 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: s.textCol }}>{mod.code}</div>
                             <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{mod.name}</div>
                           </div>
@@ -556,10 +653,11 @@ function PlannerView({ T, dark, isMobile }: { T: any, dark: boolean, isMobile: b
 }
 
 // --- MODULE VIEW ---
-function ModuleView({ T, mod, tasks, taskStatus, onToggleTask, dark, isMobile, isTablet, onBack }: { T: any, mod: ModuleSummary, tasks: WeeklyTask[], taskStatus: any, onToggleTask: any, dark: boolean, isMobile: boolean, isTablet: boolean, onBack: () => void }) {
+function ModuleView({ T, mod, tasks, taskStatus, onToggleTask, dark, isMobile, onBack }: { T: typeof LIGHT, mod: ModuleSummary, tasks: WeeklyTask[], taskStatus: Record<string, boolean>, onToggleTask: (id: string) => void, dark: boolean, isMobile: boolean, onBack: () => void }) {
   const [tab, setTab] = useState("overview");
   const staticDetails = STATIC_MODULE_DETAILS[mod.code] || { lecturer: "Unknown", week_topic: "TBA", week_summary: "No summary available.", weights: [], nusmods: { mc: 4, lessons: [], exam: { date: "TBA", time: "", venue: "", duration: "" } } };
   const details = { ...staticDetails, nusmods: mod.nusmods || staticDetails.nusmods };
+  const pendingTasks = tasks.filter(t => !taskStatus[t.id]);
 
   return (
     <div style={{ padding: isMobile ? "14px" : "24px 32px", maxWidth: 900, margin: "0 auto" }}>
@@ -602,11 +700,25 @@ function ModuleView({ T, mod, tasks, taskStatus, onToggleTask, dark, isMobile, i
                 </div>
               </div>
             </Card>
+            {pendingTasks.length > 0 && (
+              <Card T={T} title="Open Tasks" badge={String(pendingTasks.length)} badgeColor={colorForModule(mod.code)}>
+                {pendingTasks.map((t, i) => (
+                  <div key={t.id} style={{ padding: "9px 14px", borderBottom: i < pendingTasks.length - 1 ? "1px solid " + T.borderLight : "none", display: "flex", alignItems: "center", gap: 9 }}>
+                    <Chk done={taskStatus[t.id] ?? false} color={colorForModule(mod.code)} onToggle={() => onToggleTask(t.id)} size={14} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
+                      <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 1 }}>{t.dueLabel}</div>
+                    </div>
+                    <DayBadge daysLeft={getDaysLeft(t.dueDate)} />
+                  </div>
+                ))}
+              </Card>
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card T={T} title="Assessment & Exam">
               <div style={{ padding: 14 }}>
-                {details.weights.map((w: any, i: number) => (
+                {(details.weights as { component: string; weight: string }[]).map((w, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
                     <span>{w.component}</span>
                     <span style={{ fontWeight: 700 }}>{w.weight}</span>
@@ -636,18 +748,18 @@ function ModuleView({ T, mod, tasks, taskStatus, onToggleTask, dark, isMobile, i
           </div>
         </div>
       )}
-      {tab === "files" && <FilesTab T={T} mod={mod} dark={dark} isMobile={isMobile} />}
-      {tab === "quiz" && <QuizTab T={T} mod={mod} isMobile={isMobile} />}
+      {tab === "files" && <FilesTab T={T} mod={mod} />}
+      {tab === "quiz" && <QuizTab T={T} mod={mod} dark={dark} />}
     </div>
   );
 }
 
-function FilesTab({ T, mod, dark, isMobile }: { T: any, mod: ModuleSummary, dark: boolean, isMobile: boolean }) {
+function FilesTab({ T, mod }: { T: typeof LIGHT, mod: ModuleSummary }) {
   const files = mod.files || [];
-  const fileColor = (type: string) => ({ pdf: "#DC2626", zip: "#D97706", xlsx: "#059669" })[type] || "#6B7280";
+  const fileColor = (type: string): string => ({ pdf: "#DC2626", zip: "#D97706", xlsx: "#059669" } as Record<string, string>)[type] ?? "#6B7280";
   return (
     <Card T={T} title="Module Files">
-      {files.length === 0 && <Empty T={T} text="No files available." />}
+      {files.length === 0 && <Empty T={T} text="No files synced yet. Run a sync to pull Canvas files." />}
       {files.map((f, i) => (
         <div key={f.name} style={{ padding: "10px 14px", borderBottom: i < files.length - 1 ? "1px solid " + T.borderLight : "none", display: "flex", gap: 10, alignItems: "center" }}>
           <div style={{ width: 30, height: 30, borderRadius: 6, background: fileColor(f.type) + "15", border: "1px solid " + fileColor(f.type) + "25", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -664,21 +776,58 @@ function FilesTab({ T, mod, dark, isMobile }: { T: any, mod: ModuleSummary, dark
   );
 }
 
-function QuizTab({ T, mod, isMobile }: { T: any, mod: any, isMobile: boolean }) {
-  const questions = QUIZ_BANK[mod.code] || [];
+function QuizTab({ T, mod, dark }: { T: typeof LIGHT, mod: ModuleSummary, dark: boolean }) {
+  const questions = QUIZ_BANK[mod.code] ?? [];
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+
   return (
-    <Card T={T} title="Quick Quiz">
+    <Card T={T} title="Quick Quiz" badge={questions.length > 0 ? `${Object.keys(answers).length}/${questions.length}` : undefined} badgeColor={T.textMuted}>
       {questions.length === 0 && <Empty T={T} text="No quiz questions available for this module." />}
-      {questions.map((q, i) => (
-        <div key={i} style={{ padding: 14, borderBottom: i < questions.length - 1 ? "1px solid " + T.borderLight : "none" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 10 }}>{q.q}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {q.options.map((opt: string, j: number) => (
-              <div key={j} style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid " + T.border, fontSize: 12, cursor: "pointer" }}>{opt}</div>
-            ))}
+      {questions.map((q, i) => {
+        const selected = answers[i];
+        const answered = selected !== undefined;
+        return (
+          <div key={i} style={{ padding: 14, borderBottom: i < questions.length - 1 ? "1px solid " + T.borderLight : "none" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 10 }}>{q.q}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {q.options.map((opt, j) => {
+                const isCorrect = j === q.answer;
+                const isSelected = selected === j;
+                const bg = answered && isCorrect ? (dark ? "#064E3B" : "#D1FAE5") : answered && isSelected && !isCorrect ? (dark ? "#450A0A" : "#FEE2E2") : T.surface;
+                const border = answered && isCorrect ? "#059669" : answered && isSelected && !isCorrect ? "#DC2626" : T.border;
+                const color = answered && isCorrect ? "#059669" : answered && isSelected && !isCorrect ? "#DC2626" : T.text;
+                return (
+                  <button
+                    key={j}
+                    type="button"
+                    disabled={answered}
+                    aria-pressed={isSelected}
+                    onClick={() => { if (!answered) setAnswers(a => ({ ...a, [i]: j })); }}
+                    style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid " + border, background: bg, color, fontSize: 12, cursor: answered ? "default" : "pointer", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 8, textAlign: "left", width: "100%", fontFamily: "inherit" }}
+                  >
+                    <span style={{ width: 16, height: 16, borderRadius: "50%", border: "1.5px solid " + border, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 9, fontWeight: 700 }}>
+                      {answered && isCorrect ? "✓" : answered && isSelected && !isCorrect ? "✗" : String.fromCharCode(65 + j)}
+                    </span>
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+            {answered && (
+              <div style={{ marginTop: 10, padding: "8px 12px", background: dark ? "#0D1829" : "#EFF6FF", borderRadius: 6, fontSize: 12, color: dark ? "#93C5FD" : "#1D4ED8", lineHeight: 1.5 }}>
+                <strong>Explanation:</strong> {q.explanation}
+              </div>
+            )}
           </div>
+        );
+      })}
+      {questions.length > 0 && Object.keys(answers).length > 0 && (
+        <div style={{ padding: "10px 14px", borderTop: "1px solid " + T.borderLight, display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => setAnswers({})} aria-label={`Reset all ${questions.length} quiz questions`} style={{ background: "transparent", border: "none", color: T.textMuted, fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+            Reset quiz
+          </button>
         </div>
-      ))}
+      )}
     </Card>
   );
 }
@@ -710,7 +859,7 @@ export default function DashboardClient({ data: initialData }: { data: Dashboard
         body: JSON.stringify({ moduleId, sync_enabled: enabled }),
       });
       if (!response.ok) throw new Error("Failed to update sync setting");
-    } catch (err) {
+    } catch {
       setData(prev => ({ ...prev, modules: prevModules }));
     }
   };
@@ -734,7 +883,7 @@ export default function DashboardClient({ data: initialData }: { data: Dashboard
         {!isMobile && (
           <>
             <div style={{ width: 1, height: 16, background: T.border, margin: "0 4px" }} />
-            {["home", "nusmods", "planner", "manage"].map(key => (
+            {(["home", "nusmods", "planner", "manage"] as const).map(key => (
               <button key={key} onClick={() => setView(key)} style={{ padding: "4px 12px", borderRadius: 5, border: "none", fontSize: 12.5, fontWeight: 500, cursor: "pointer", background: view === key ? T.activeBg : "transparent", color: view === key ? T.text : T.textMuted, fontFamily: "inherit", textTransform: "capitalize" }}>
                 {key}
               </button>
@@ -743,9 +892,13 @@ export default function DashboardClient({ data: initialData }: { data: Dashboard
         )}
         <div style={{ flex: 1 }} />
         <SyncButton initialLastSyncedAt={data.lastSyncedAt} />
-        <div onClick={() => setDark(d => !d)} style={{ width: 32, height: 18, borderRadius: 9, background: dark ? "#3B82F6" : T.border, position: "relative", flexShrink: 0, cursor: "pointer", margin: "0 8px" }}>
+        <button
+          onClick={() => setDark(d => !d)}
+          title={dark ? "Switch to light mode" : "Switch to dark mode"}
+          style={{ width: 32, height: 18, borderRadius: 9, background: dark ? "#3B82F6" : T.border, position: "relative", flexShrink: 0, cursor: "pointer", margin: "0 8px", border: "none", padding: 0 }}
+        >
           <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: dark ? 17 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
-        </div>
+        </button>
         <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#3B82F6,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", fontWeight: 700, flexShrink: 0 }}><span style={{ margin: "auto" }}>A</span></div>
       </div>
 
@@ -772,7 +925,7 @@ export default function DashboardClient({ data: initialData }: { data: Dashboard
           {view === "nusmods" && <NUSModsView T={T} isMobile={isMobile} modules={data.modules} />}
           {view === "planner" && <PlannerView T={T} dark={dark} isMobile={isMobile} />}
           {view === "manage" && <ManageView T={T} modules={data.modules} onToggleSync={toggleSync} isMobile={isMobile} />}
-          {activeMod && <ModuleView T={T} mod={activeMod} tasks={data.tasks.filter(t => t.moduleCode === activeMod.code)} taskStatus={taskStatus} onToggleTask={toggleTask} dark={dark} isMobile={isMobile} isTablet={isTablet} onBack={() => setView("home")} />}
+          {activeMod && <ModuleView T={T} mod={activeMod} tasks={data.tasks.filter(t => t.moduleCode === activeMod.code)} taskStatus={taskStatus} onToggleTask={toggleTask} dark={dark} isMobile={isMobile} onBack={() => setView("home")} />}
         </div>
       </div>
       {isMobile && <BottomNav T={T} view={view} setView={setView} />}
