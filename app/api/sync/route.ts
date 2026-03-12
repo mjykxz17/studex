@@ -351,7 +351,19 @@ export async function POST(request: Request) {
             }
           }
         }
-        send({ status: "complete", message: "Deep sync finished!" });
+        // Stream final summary with counts
+        const parts: string[] = [];
+        if (counters.newFiles > 0) parts.push(`${counters.processedFiles} files`);
+        if (counters.newAnnouncements > 0) parts.push(`${counters.processedAnnouncements} announcements`);
+        if (counters.newTasks > 0) parts.push(`${counters.newTasks} tasks`);
+        if (counters.embeddingsCreated > 0) parts.push(`${counters.embeddingsCreated} embeddings`);
+        const summary = parts.length > 0
+          ? `Sync complete — processed ${parts.join(", ")}.`
+          : "Sync complete — everything was already up to date.";
+        send({ status: "complete", message: summary });
+
+        // Update last_synced_at
+        await supabase.from("users").update({ last_synced_at: new Date().toISOString() }).eq("id", user.id);
       } catch (err: any) { send({ status: "error", message: err.message }); }
       controller.close();
     }

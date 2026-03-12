@@ -223,7 +223,11 @@ export async function loadDashboardData(): Promise<DashboardData> {
 
     const modules: ModuleSummary[] = await Promise.all(
       (modulesData ?? []).map(async (module) => {
-        const nusmods = await fetchNUSModsModule(module.code ?? "");
+        // NUSMods fetch has its own cache + error handling — won't block rendering
+        let nusmods: NUSModsData | null = null;
+        try {
+          nusmods = await fetchNUSModsModule(module.code ?? "");
+        } catch { /* non-critical — dashboard works without NUSMods data */ }
         return {
           id: String(module.id),
           code: module.code ?? "MOD",

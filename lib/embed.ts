@@ -30,16 +30,24 @@ export function chunkText(text: string, size = 500, overlap = 50): string[] {
 /**
  * Generate vector embeddings locally using Transformers.js.
  * Model: Xenova/all-MiniLM-L6-v2 (384 dimensions)
+ * Processes in batches of 8 for better throughput.
  */
 export async function generateEmbeddings(inputs: string[]): Promise<number[][]> {
   if (inputs.length === 0) return [];
 
   const extractor = await getPipeline();
+  const BATCH_SIZE = 8;
   const results: number[][] = [];
 
-  for (const input of inputs) {
-    const output = await extractor(input, { pooling: "mean", normalize: true });
-    results.push(Array.from(output.data));
+  for (let i = 0; i < inputs.length; i += BATCH_SIZE) {
+    const batch = inputs.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async (input) => {
+        const output = await extractor(input, { pooling: "mean", normalize: true });
+        return Array.from(output.data) as number[];
+      })
+    );
+    results.push(...batchResults);
   }
 
   return results;

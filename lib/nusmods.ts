@@ -22,12 +22,26 @@ export type NUSModsData = {
 const ACADEMIC_YEAR = "2025-2026";
 const SEMESTER = 2;
 
+// In-memory cache — NUSMods data rarely changes, avoid hitting API on every page load
+const _cache = new Map<string, { data: NUSModsData | null; expiresAt: number }>();
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 export async function fetchNUSModsModule(moduleCode: string): Promise<NUSModsData | null> {
+  if (!moduleCode) return null;
+
+  const cached = _cache.get(moduleCode);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
   try {
     const response = await fetch(
       `https://api.nusmods.com/v2/${ACADEMIC_YEAR}/modules/${moduleCode}.json`
     );
-    if (!response.ok) return null;
+    if (!response.ok) {
+      _cache.set(moduleCode, { data: null, expiresAt: Date.now() + CACHE_TTL_MS });
+      return null;
+    }
 
     const data = await response.json();
     const semData = data.semesterData?.find((s: any) => s.semester === SEMESTER);
@@ -70,14 +84,18 @@ export async function fetchNUSModsModule(moduleCode: string): Promise<NUSModsDat
         : "—",
     };
 
-    return {
+    const result: NUSModsData = {
       mc: Number(data.moduleCredit),
       faculty: data.faculty,
       lessons: uniqueLessons,
       exam,
     };
+
+    _cache.set(moduleCode, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+    return result;
   } catch (error) {
     console.error(`Error fetching NUSMods data for ${moduleCode}:`, error);
+    _cache.set(moduleCode, { data: null, expiresAt: Date.now() + 5 * 60 * 1000 }); // cache errors for 5min
     return null;
   }
 }
