@@ -6,7 +6,6 @@ export type SyncCounts = {
   announcements: number;
   tasks: number;
   files: number;
-  embeddings: number;
 };
 
 export type SyncEvent = {
