@@ -78,16 +78,6 @@ export type ModuleSummary = {
   nusmods?: NUSModsData | null;
 };
 
-export type ChatPreview = {
-  activeModule: string;
-  suggestedPrompts: string[];
-  recentMessages: Array<{
-    id: string;
-    role: "assistant" | "user";
-    content: string;
-  }>;
-};
-
 export type DashboardData = {
   overview: DashboardOverview;
   modules: ModuleSummary[];
@@ -95,7 +85,6 @@ export type DashboardData = {
   announcements: AnnouncementSummary[];
   recentFiles: Array<CanvasFileSummary & { moduleCode: string; moduleTitle: string }>;
   latestChanges: DashboardChange[];
-  chat: ChatPreview;
   source: "live" | "fallback";
   status: "ready" | "needs-setup" | "error";
   setupMessage: string;
@@ -104,7 +93,6 @@ export type DashboardData = {
 };
 
 type RelationRecord = { code?: string | null };
-type QueryErrorLike = { message?: string | null };
 
 type ModuleQueryRow = {
   id: string;
@@ -117,7 +105,6 @@ type ModuleQueryRow = {
     filename: string | null;
     file_type: string | null;
     uploaded_at: string | null;
-    ai_summary?: string | null;
     extracted_text: string | null;
     canvas_url: string | null;
   }> | null;
@@ -136,22 +123,12 @@ type TaskQueryRow = {
 type AnnouncementQueryRow = {
   id: string;
   title: string | null;
-  ai_summary?: string | null;
+  body_raw: string | null;
   posted_at: string | null;
   importance: string | null;
   modules: RelationRecord | RelationRecord[] | null;
 };
 
-function getMissingColumnName(error: QueryErrorLike | null | undefined) {
-  const message = error?.message ?? "";
-  const postgresMatch = message.match(/column\s+(?:"?[\w]+"?\.)?"?([\w]+)"?\s+does not exist/i);
-  if (postgresMatch) {
-    return postgresMatch[1];
-  }
-
-  const schemaCacheMatch = message.match(/could not find the ['"]?([\w]+)['"]? column/i);
-  return schemaCacheMatch ? schemaCacheMatch[1] : null;
-}
 
 export const FALLBACK_DASHBOARD: DashboardData = {
   overview: {
@@ -165,7 +142,7 @@ export const FALLBACK_DASHBOARD: DashboardData = {
   source: "fallback",
   status: "needs-setup",
   setupMessage:
-    "Studex is waiting for Supabase, Canvas, and AI configuration. Add the required environment variables, run the SQL schema, then trigger your first sync.",
+    "Studex is waiting for Supabase and Canvas configuration. Add the required environment variables, run the SQL schema, then trigger your first sync.",
   userId: null,
   lastSyncedAt: null,
   modules: [],
@@ -173,21 +150,6 @@ export const FALLBACK_DASHBOARD: DashboardData = {
   announcements: [],
   recentFiles: [],
   latestChanges: [],
-  chat: {
-    activeModule: "All modules",
-    suggestedPrompts: [
-      "What is due this week?",
-      "Summarise the latest announcements.",
-      "Which module changed most recently?",
-    ],
-    recentMessages: [
-      {
-        id: "assistant-bootstrap",
-        role: "assistant",
-        content: "Once sync finishes, I’ll answer from your real Canvas files, tasks, and announcements.",
-      },
-    ],
-  },
 };
 
 const weekdayFormatter = new Intl.DateTimeFormat("en-SG", {
@@ -397,40 +359,37 @@ function createServiceClient() {
   });
 }
 
+function stripHtmlForSummary(value: string | null | undefined): string {
+  return (value ?? "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/p>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 async function loadModuleRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
-  const full = await supabase
+  return supabase
     .from("modules")
-    .select("id, code, title, last_canvas_sync, sync_enabled, canvas_files(id, filename, file_type, uploaded_at, ai_summary, extracted_text, canvas_url)")
+    .select("id, code, title, last_canvas_sync, sync_enabled, canvas_files(id, filename, file_type, uploaded_at, extracted_text, canvas_url)")
     .eq("user_id", userId)
     .order("code", { ascending: true });
-
-  if (full.error && getMissingColumnName(full.error) === "ai_summary") {
-    return supabase
-      .from("modules")
-      .select("id, code, title, last_canvas_sync, sync_enabled, canvas_files(id, filename, file_type, uploaded_at, extracted_text, canvas_url)")
-      .eq("user_id", userId)
-      .order("code", { ascending: true });
-  }
-
-  return full;
 }
 
 async function loadAnnouncementRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
-  const full = await supabase
+  return supabase
     .from("announcements")
-    .select("id, title, ai_summary, posted_at, importance, modules(code)")
+    .select("id, title, body_raw, posted_at, importance, modules(code)")
     .eq("user_id", userId)
     .order("posted_at", { ascending: false, nullsFirst: false });
-
-  if (full.error && getMissingColumnName(full.error) === "ai_summary") {
-    return supabase
-      .from("announcements")
-      .select("id, title, posted_at, importance, modules(code)")
-      .eq("user_id", userId)
-      .order("posted_at", { ascending: false, nullsFirst: false });
-  }
-
-  return full;
 }
 
 function buildFileSummary(row: ModuleFileRow): CanvasFileSummary {
@@ -444,9 +403,7 @@ function buildFileSummary(row: ModuleFileRow): CanvasFileSummary {
     category: getFileCategory(row.file_type),
     uploadedLabel: formatRelativeDayLabel(row.uploaded_at),
     uploadedAt: row.uploaded_at,
-    summary:
-      row.ai_summary?.trim() ||
-      (extractedText ? `${extractedText.slice(0, 160).trim()}…` : "Summary will appear after file processing."),
+    summary: extractedText ? `${extractedText.slice(0, 160).trim()}…` : "Open this file to preview it.",
     canvasUrl: row.canvas_url,
     extractedText,
     previewKind: getPreviewKind(name, extractedText),
@@ -539,20 +496,23 @@ export async function loadDashboardData(): Promise<DashboardData> {
       source: task.source ?? "Canvas",
     }));
 
-    const announcements: AnnouncementSummary[] = ((announcementsData ?? []) as AnnouncementQueryRow[]).map((announcement) => ({
-      id: announcement.id,
-      title: announcement.title ?? "Untitled announcement",
-      moduleCode: getRelatedModuleCode(announcement.modules),
-      summary:
-        announcement.ai_summary?.trim() ||
-        "Summary will appear here once the announcement has been processed by the sync pipeline.",
-      postedLabel: formatRelativeDayLabel(announcement.posted_at),
-      postedAt: announcement.posted_at,
-      importance:
-        announcement.importance === "high" || announcement.importance === "low" || announcement.importance === "normal"
-          ? announcement.importance
-          : "normal",
-    }));
+    const announcements: AnnouncementSummary[] = ((announcementsData ?? []) as AnnouncementQueryRow[]).map((announcement) => {
+      const bodyPreview = stripHtmlForSummary(announcement.body_raw);
+      return {
+        id: announcement.id,
+        title: announcement.title ?? "Untitled announcement",
+        moduleCode: getRelatedModuleCode(announcement.modules),
+        summary: bodyPreview
+          ? `${bodyPreview.slice(0, 220).trim()}${bodyPreview.length > 220 ? "…" : ""}`
+          : "Open this announcement to read the full message.",
+        postedLabel: formatRelativeDayLabel(announcement.posted_at),
+        postedAt: announcement.posted_at,
+        importance:
+          announcement.importance === "high" || announcement.importance === "low" || announcement.importance === "normal"
+            ? announcement.importance
+            : "normal",
+      };
+    });
 
     const tasksByModule = groupByModuleCode(tasks);
     const announcementsByModule = groupByModuleCode(announcements);
@@ -626,15 +586,6 @@ export async function loadDashboardData(): Promise<DashboardData> {
       announcements,
       recentFiles,
       latestChanges,
-      chat: {
-        activeModule: modules[0]?.code ?? FALLBACK_DASHBOARD.chat.activeModule,
-        suggestedPrompts: [
-          "What is due this week?",
-          "Summarise the latest announcement for this module.",
-          "Which files should I revise first?",
-        ],
-        recentMessages: FALLBACK_DASHBOARD.chat.recentMessages,
-      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : FALLBACK_DASHBOARD.setupMessage;

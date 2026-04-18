@@ -9,12 +9,6 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-const baseChat = {
-  activeModule: "All modules",
-  suggestedPrompts: ["What is due this week?"],
-  recentMessages: [{ id: "assistant-1", role: "assistant" as const, content: "Ask me anything." }],
-};
-
 const baseOverview = {
   syncedModuleCount: 0,
   openTaskCount: 0,
@@ -31,7 +25,6 @@ const beforeSync: DashboardData = {
   announcements: [],
   recentFiles: [],
   latestChanges: [],
-  chat: baseChat,
   source: "fallback",
   status: "needs-setup",
   setupMessage: "Run sync first.",
@@ -147,7 +140,6 @@ const afterSync: DashboardData = {
       file: previewFile,
     },
   ],
-  chat: baseChat,
   source: "live",
   status: "ready",
   setupMessage: "Studex is rendering live Canvas-backed data from Supabase.",

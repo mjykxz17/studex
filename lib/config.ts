@@ -1,5 +1,3 @@
-import { resolveAIConfig } from "@/lib/ai";
-
 export type ConfigRequirement = {
   key: string;
   required: boolean;
@@ -13,9 +11,6 @@ const CONFIG_KEYS = [
   { key: "SUPABASE_SERVICE_KEY", required: true, description: "Supabase service role key" },
   { key: "CANVAS_TOKEN", required: true, description: "Canvas API token" },
   { key: "CANVAS_BASE_URL", required: false, description: "Canvas base URL" },
-  { key: "AI_MODEL", required: false, description: "Default AI model" },
-  { key: "ANTHROPIC_API_KEY", required: false, description: "Anthropic API key" },
-  { key: "OPENAI_API_KEY", required: false, description: "OpenAI API key" },
 ] as const;
 
 export function readEnv(name: string): string | undefined {
@@ -47,23 +42,10 @@ export function getConfigRequirements(): ConfigRequirement[] {
 export function getServerHealth() {
   const requirements = getConfigRequirements();
   const missingRequired = requirements.filter((entry) => entry.required && !entry.present).map((entry) => entry.key);
-  const defaultAI = resolveAIConfig();
-  const providerKey = defaultAI.provider === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
 
   return {
     ok: missingRequired.length === 0,
     missingRequired,
     requirements,
-    ai: {
-      defaultModel: defaultAI.model,
-      provider: defaultAI.provider,
-      providerConfigured: Boolean(readEnv(providerKey)),
-      anthropicConfigured: Boolean(readEnv("ANTHROPIC_API_KEY")),
-      openaiConfigured: Boolean(readEnv("OPENAI_API_KEY")),
-      embeddings: {
-        provider: "local-transformers",
-        fallback: "deterministic-hash",
-      },
-    },
   };
 }
