@@ -117,7 +117,7 @@ type TaskQueryRow = {
   title: string | null;
   due_at: string | null;
   source: string | null;
-  modules: RelationRecord | RelationRecord[] | null;
+  courses: RelationRecord | RelationRecord[] | null;
 };
 
 type AnnouncementQueryRow = {
@@ -126,7 +126,7 @@ type AnnouncementQueryRow = {
   body_raw: string | null;
   posted_at: string | null;
   importance: string | null;
-  modules: RelationRecord | RelationRecord[] | null;
+  courses: RelationRecord | RelationRecord[] | null;
 };
 
 
@@ -378,7 +378,7 @@ function stripHtmlForSummary(value: string | null | undefined): string {
 
 async function loadModuleRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
   return supabase
-    .from("modules")
+    .from("courses")
     .select("id, code, title, last_canvas_sync, sync_enabled, canvas_files(id, filename, file_type, uploaded_at, extracted_text, canvas_url)")
     .eq("user_id", userId)
     .order("code", { ascending: true });
@@ -387,7 +387,7 @@ async function loadModuleRows(supabase: ReturnType<typeof createServiceClient>, 
 async function loadAnnouncementRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
   return supabase
     .from("announcements")
-    .select("id, title, body_raw, posted_at, importance, modules(code)")
+    .select("id, title, body_raw, posted_at, importance, courses(code)")
     .eq("user_id", userId)
     .order("posted_at", { ascending: false, nullsFirst: false });
 }
@@ -475,7 +475,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
       loadModuleRows(supabase, userId),
       supabase
         .from("tasks")
-        .select("id, title, due_at, source, modules(code)")
+        .select("id, title, due_at, source, courses(code)")
         .eq("user_id", userId)
         .eq("completed", false)
         .order("due_at", { ascending: true, nullsFirst: false }),
@@ -489,7 +489,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
     const tasks: WeeklyTask[] = ((tasksData ?? []) as TaskQueryRow[]).map((task) => ({
       id: task.id,
       title: task.title ?? "Untitled task",
-      moduleCode: getRelatedModuleCode(task.modules),
+      moduleCode: getRelatedModuleCode(task.courses),
       dueLabel: formatRelativeDate(task.due_at),
       dueDate: task.due_at,
       status: getTaskStatus(task.due_at),
@@ -501,7 +501,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
       return {
         id: announcement.id,
         title: announcement.title ?? "Untitled announcement",
-        moduleCode: getRelatedModuleCode(announcement.modules),
+        moduleCode: getRelatedModuleCode(announcement.courses),
         summary: bodyPreview
           ? `${bodyPreview.slice(0, 220).trim()}${bodyPreview.length > 220 ? "…" : ""}`
           : "Open this announcement to read the full message.",

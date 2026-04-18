@@ -22,7 +22,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type SyncSender = (event: SyncEvent) => void;
 
-type ModuleRow = {
+type CourseRow = {
   id: string;
   canvas_course_id: string;
   code: string | null;
@@ -129,11 +129,11 @@ function inferModuleCode(course: CanvasCourse): string {
   return sanitizeSyncText(course.course_code) || sanitizeSyncText(course.name) || `course-${course.id}`;
 }
 
-async function upsertModule(userId: string, course: CanvasCourse) {
+async function upsertCourse(userId: string, course: CanvasCourse) {
   const supabase = getSupabaseAdminClient();
   const code = inferModuleCode(course);
   const { data, error } = await supabase
-    .from("modules")
+    .from("courses")
     .upsert(
       {
         user_id: userId,
@@ -145,10 +145,10 @@ async function upsertModule(userId: string, course: CanvasCourse) {
       { onConflict: "user_id, canvas_course_id" },
     )
     .select("id, canvas_course_id, code, title, sync_enabled")
-    .single<ModuleRow>();
+    .single<CourseRow>();
 
   if (error || !data) {
-    throw new Error(`Failed to upsert module ${code}: ${error?.message ?? "Unknown error"}`);
+    throw new Error(`Failed to upsert course ${code}: ${error?.message ?? "Unknown error"}`);
   }
 
   return data;
@@ -162,21 +162,21 @@ async function getSafeFileDownloadUrl(fileId: number | string) {
   }
 }
 
-async function loadExistingState(supabase: SupabaseClient, moduleId: string) {
+async function loadExistingState(supabase: SupabaseClient, courseId: string) {
   const [announcementsResult, tasksResult, filesResult] = await Promise.all([
     supabase
       .from("announcements")
       .select("id, canvas_announcement_id, source_updated_at, content_hash")
-      .eq("module_id", moduleId),
+      .eq("course_id", courseId),
     supabase
       .from("tasks")
       .select("id, source_ref_id, due_at, description_hash")
-      .eq("module_id", moduleId)
+      .eq("course_id", courseId)
       .eq("source", "canvas"),
     supabase
       .from("canvas_files")
       .select("id, canvas_file_id, source_updated_at, content_hash, processed")
-      .eq("module_id", moduleId),
+      .eq("course_id", courseId),
   ]);
 
   if (announcementsResult.error) {
@@ -203,7 +203,7 @@ async function loadExistingState(supabase: SupabaseClient, moduleId: string) {
 async function syncAnnouncement(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
+  course: CourseRow;
   announcement: CanvasAnnouncement;
   existing: AnnouncementRow | undefined;
 }) {
@@ -221,7 +221,7 @@ async function syncAnnouncement(params: {
 
   const { error } = await params.supabase.from("announcements").upsert(
     {
-      module_id: params.module.id,
+      course_id: params.course.id,
       user_id: params.userId,
       canvas_announcement_id: String(params.announcement.id),
       title: sanitizeSyncText(params.announcement.title),
@@ -243,7 +243,7 @@ async function syncAnnouncement(params: {
 async function syncAssignment(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
+  course: CourseRow;
   assignment: CanvasAssignment;
   existing: TaskRow | undefined;
 }) {
@@ -257,7 +257,7 @@ async function syncAssignment(params: {
 
   const { error } = await params.supabase.from("tasks").upsert(
     {
-      module_id: params.module.id,
+      course_id: params.course.id,
       user_id: params.userId,
       title: sanitizeSyncText(params.assignment.name) || "Untitled task",
       due_at: dueAt,
@@ -279,7 +279,7 @@ async function syncAssignment(params: {
 async function syncFile(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
+  course: CourseRow;
   file: CanvasFile;
   existing: FileRow | undefined;
 }) {
@@ -305,7 +305,7 @@ async function syncFile(params: {
 
   const { error } = await params.supabase.from("canvas_files").upsert(
     {
-      module_id: params.module.id,
+      course_id: params.course.id,
       user_id: params.userId,
       canvas_file_id: String(params.file.id),
       filename: sanitizeSyncText(params.file.display_name || params.file.filename),
@@ -325,15 +325,15 @@ async function syncFile(params: {
   return { changed: true };
 }
 
-async function processModuleSync(params: {
+async function processCourseSync(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
+  course: CourseRow;
   syncFiles: boolean;
   send: SyncSender;
   counts: SyncCounts;
 }) {
-  const moduleCode = params.module.code ?? "MOD";
+  const moduleCode = params.course.code ?? "MOD";
 
   params.send({
     status: "progress",
@@ -344,16 +344,16 @@ async function processModuleSync(params: {
   });
 
   const [existing, announcementsResult, assignmentsResult, filesResult] = await Promise.all([
-    loadExistingState(params.supabase, params.module.id),
-    getAnnouncements(params.module.canvas_course_id).then(
+    loadExistingState(params.supabase, params.course.id),
+    getAnnouncements(params.course.canvas_course_id).then(
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
-    getAssignments(params.module.canvas_course_id).then(
+    getAssignments(params.course.canvas_course_id).then(
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
-    (params.syncFiles ? getFiles(params.module.canvas_course_id) : Promise.resolve([])).then(
+    (params.syncFiles ? getFiles(params.course.canvas_course_id) : Promise.resolve([])).then(
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
@@ -401,7 +401,7 @@ async function processModuleSync(params: {
       const result = await syncAnnouncement({
         supabase: params.supabase,
         userId: params.userId,
-        module: params.module,
+        course: params.course,
         announcement,
         existing: existing.announcements.get(String(announcement.id)),
       });
@@ -433,7 +433,7 @@ async function processModuleSync(params: {
       const result = await syncAssignment({
         supabase: params.supabase,
         userId: params.userId,
-        module: params.module,
+        course: params.course,
         assignment,
         existing: existing.tasks.get(String(assignment.id)),
       });
@@ -466,7 +466,7 @@ async function processModuleSync(params: {
         const result = await syncFile({
           supabase: params.supabase,
           userId: params.userId,
-          module: params.module,
+          course: params.course,
           file,
           existing: existing.files.get(String(file.id)),
         });
@@ -496,16 +496,16 @@ async function processModuleSync(params: {
 
   params.counts.modules += 1;
   await params.supabase
-    .from("modules")
+    .from("courses")
     .update({ last_canvas_sync: new Date().toISOString() })
-    .eq("id", params.module.id)
+    .eq("id", params.course.id)
     .eq("user_id", params.userId);
 }
 
 export async function runDiscoverySync(send: SyncSender) {
   const user = await ensureDemoUser();
   const courses = await getCourses();
-  const upsertedModules: ModuleRow[] = [];
+  const upsertedCourses: CourseRow[] = [];
 
   send({
     status: "started",
@@ -514,16 +514,16 @@ export async function runDiscoverySync(send: SyncSender) {
   });
 
   for (const course of courses) {
-    const moduleRow = await upsertModule(user.id, course);
-    upsertedModules.push(moduleRow);
-    void fetchNUSModsModule(moduleRow.code ?? "");
+    const courseRow = await upsertCourse(user.id, course);
+    upsertedCourses.push(courseRow);
+    void fetchNUSModsModule(courseRow.code ?? "");
   }
 
   send({
     status: "complete",
     stage: "discovery",
-    message: `Discovery complete. Found ${upsertedModules.length} modules.`,
-    counts: { modules: upsertedModules.length },
+    message: `Discovery complete. Found ${upsertedCourses.length} modules.`,
+    counts: { modules: upsertedCourses.length },
   });
 }
 
@@ -536,7 +536,7 @@ export async function runSelectedModuleSync(config: SyncConfig, send: SyncSender
   const supabase = getSupabaseAdminClient();
   const counts = createCounts();
   const { data, error } = await supabase
-    .from("modules")
+    .from("courses")
     .select("id, canvas_course_id, code, title, sync_enabled")
     .eq("user_id", user.id)
     .in("id", config.selectedModuleIds)
@@ -546,24 +546,24 @@ export async function runSelectedModuleSync(config: SyncConfig, send: SyncSender
     throw new Error(`Failed to load selected modules: ${error.message}`);
   }
 
-  const modules = ((data ?? []) as ModuleRow[]).filter((moduleRow) => Boolean(moduleRow.canvas_course_id));
+  const courses = ((data ?? []) as CourseRow[]).filter((courseRow) => Boolean(courseRow.canvas_course_id));
 
-  if (modules.length === 0) {
+  if (courses.length === 0) {
     throw new Error("No matching modules found for this sync.");
   }
 
   send({
     status: "started",
     stage: "module",
-    message: `Starting sync for ${modules.length} module${modules.length === 1 ? "" : "s"}...`,
+    message: `Starting sync for ${courses.length} module${courses.length === 1 ? "" : "s"}...`,
     counts,
   });
 
-  for (const moduleRow of modules) {
-    await processModuleSync({
+  for (const courseRow of courses) {
+    await processCourseSync({
       supabase,
       userId: user.id,
-      module: moduleRow,
+      course: courseRow,
       syncFiles: config.syncFiles,
       send,
       counts,

@@ -1,7 +1,6 @@
--- Studex canonical schema (post-Phase-A, pre-Phase-B).
+-- Studex canonical schema (Phase B, ongoing).
 -- This is the source of truth for the current DB shape.
--- For fresh projects, run this file once. For in-place upgrades from
--- a pre-pivot DB, apply migrations in order from supabase/migrations/.
+-- For fresh projects, apply migrations 0001..NNNN in order.
 
 create table users (
   id uuid default gen_random_uuid() primary key,
@@ -10,8 +9,7 @@ create table users (
   last_synced_at timestamptz
 );
 
--- Note: this table will be renamed to `courses` in Phase B.
-create table modules (
+create table courses (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references users(id),
   canvas_course_id text,
@@ -24,7 +22,7 @@ create table modules (
 
 create table canvas_files (
   id uuid default gen_random_uuid() primary key,
-  module_id uuid references modules(id),
+  course_id uuid references courses(id),
   user_id uuid references users(id),
   canvas_file_id text,
   filename text,
@@ -41,7 +39,7 @@ create table canvas_files (
 
 create table announcements (
   id uuid default gen_random_uuid() primary key,
-  module_id uuid references modules(id),
+  course_id uuid references courses(id),
   user_id uuid references users(id),
   canvas_announcement_id text,
   title text,
@@ -56,7 +54,7 @@ create table announcements (
 
 create table tasks (
   id uuid default gen_random_uuid() primary key,
-  module_id uuid references modules(id),
+  course_id uuid references courses(id),
   user_id uuid references users(id),
   title text,
   due_at timestamptz,
