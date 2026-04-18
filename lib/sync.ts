@@ -364,7 +364,7 @@ async function syncFile(params: {
 }
 
 function resolveContentRef(item: CanvasModuleItem): string | null {
-  if (item.content_id) return String(item.content_id);
+  if (item.content_id != null) return String(item.content_id);
   if (item.page_url) return item.page_url;
   return null;
 }
