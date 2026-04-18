@@ -1,7 +1,10 @@
 const DEFAULT_CANVAS_BASE_URL = "https://canvas.nus.edu.sg";
 const DEFAULT_PER_PAGE = 100;
 const MAX_RETRIES = 4;
+const REQUEST_TIMEOUT_MS = 15_000;
+const DOWNLOAD_TIMEOUT_MS = 30_000;
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+const RETRYABLE_DOWNLOAD_STATUS_CODES = new Set([401, 403, 404, 408, 429, 500, 502, 503, 504]);
 
 export interface CanvasCourse {
   id: number;
@@ -85,6 +88,18 @@ interface JsonResponse<T> {
   status: number;
 }
 
+type RequestResponseOptions = CanvasRequestOptions & {
+  auth?: boolean;
+  accept?: string;
+  timeoutMs?: number;
+  retryableStatusCodes?: Set<number>;
+};
+
+export interface CanvasDownloadResult {
+  downloadUrl: string;
+  response: Response;
+}
+
 function getCanvasBaseUrl(): string {
   const baseUrl = process.env.CANVAS_BASE_URL?.trim() || DEFAULT_CANVAS_BASE_URL;
   return baseUrl.replace(/\/+$/, "");
@@ -153,51 +168,53 @@ function getRetryDelayMs(response: Response | null, attempt: number): number {
 }
 
 function isRetryableError(error: unknown): boolean {
-  if (!(error instanceof TypeError)) {
-    return false;
-  }
-
-  return true;
+  return error instanceof TypeError || (error instanceof Error && error.name === "AbortError");
 }
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function requestJson<T>(url: URL | string, options: CanvasRequestOptions = {}): Promise<JsonResponse<T | null>> {
-  const token = getCanvasToken();
+async function requestResponse(url: URL | string, options: RequestResponseOptions = {}): Promise<Response | null> {
+  const token = options.auth === false ? null : getCanvasToken();
+  const retryableStatusCodes = options.retryableStatusCodes ?? RETRYABLE_STATUS_CODES;
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
     let response: Response | null = null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       response = await fetch(url, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
+          Accept: options.accept ?? "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "User-Agent": "Studex/0.1",
         },
         cache: "no-store",
+        redirect: "follow",
+        signal: controller.signal,
       });
 
       if (options.allowNotFound && response.status === 404) {
-        return { data: null, headers: response.headers, status: response.status };
+        return null;
       }
 
       if (!response.ok) {
-        if (attempt < MAX_RETRIES && RETRYABLE_STATUS_CODES.has(response.status)) {
+        if (attempt < MAX_RETRIES && retryableStatusCodes.has(response.status)) {
           await sleep(getRetryDelayMs(response, attempt));
           continue;
         }
 
         const errorText = await response.text();
         throw new Error(
-          `Canvas API request failed (${response.status} ${response.statusText}) for ${response.url}: ${errorText || "No response body"}`
+          `Canvas request failed (${response.status} ${response.statusText}) for ${response.url}: ${errorText || "No response body"}`,
         );
       }
 
-      const data = (await response.json()) as T;
-      return { data, headers: response.headers, status: response.status };
+      return response;
     } catch (error) {
       if (attempt < MAX_RETRIES && isRetryableError(error)) {
         await sleep(getRetryDelayMs(response, attempt));
@@ -205,10 +222,23 @@ async function requestJson<T>(url: URL | string, options: CanvasRequestOptions =
       }
 
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
-  throw new Error(`Canvas API request exhausted retries for ${String(url)}`);
+  throw new Error(`Canvas request exhausted retries for ${String(url)}`);
+}
+
+async function requestJson<T>(url: URL | string, options: CanvasRequestOptions = {}): Promise<JsonResponse<T | null>> {
+  const response = await requestResponse(url, options);
+
+  if (!response) {
+    return { data: null, headers: new Headers(), status: 404 };
+  }
+
+  const data = (await response.json()) as T;
+  return { data, headers: response.headers, status: response.status };
 }
 
 async function paginate<T>(path: string, query?: CanvasRequestOptions["query"]): Promise<T[]> {
@@ -262,4 +292,40 @@ export async function getFileDownloadUrl(fileId: number | string): Promise<strin
   });
 
   return response.data?.url ?? null;
+}
+
+export async function downloadCanvasFile(fileId: number | string): Promise<CanvasDownloadResult | null> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    const downloadUrl = await getFileDownloadUrl(fileId);
+
+    if (!downloadUrl) {
+      return null;
+    }
+
+    try {
+      const response = await requestResponse(downloadUrl, {
+        auth: false,
+        accept: "*/*",
+        timeoutMs: DOWNLOAD_TIMEOUT_MS,
+        retryableStatusCodes: RETRYABLE_DOWNLOAD_STATUS_CODES,
+      });
+
+      if (!response) {
+        return null;
+      }
+
+      return {
+        downloadUrl,
+        response,
+      };
+    } catch (error) {
+      if (attempt === MAX_RETRIES) {
+        throw error;
+      }
+
+      await sleep(Math.min(1000 * 2 ** attempt, 5000));
+    }
+  }
+
+  return null;
 }

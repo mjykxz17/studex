@@ -1,17 +1,4 @@
-const readEnv = (name: string): string | undefined => {
-  const value = process.env[name]?.trim();
-  return value ? value : undefined;
-};
-
-const requireEnv = (name: string): string => {
-  const value = readEnv(name);
-
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-
-  return value;
-};
+import { requireEnv } from "@/lib/config";
 
 export const env = {
   get supabaseUrl() {

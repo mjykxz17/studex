@@ -1,20 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { SyncModal, type SyncConfig } from "./sync-modal";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-type SyncProgress = {
-  status: string;
-  message: string;
-  count?: number;
-  syncedAt?: string;
-};
+import type { SyncEvent } from "@/lib/contracts";
+
+import { SyncModal, type SyncConfig } from "./sync-modal";
+import { readSyncStream } from "./sync-stream";
 
 function formatLastSynced(value: string | null) {
-  if (!value) return "Never synced";
+  if (!value) {
+    return "Never synced";
+  }
+
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Last sync time unavailable";
+  if (Number.isNaN(date.getTime())) {
+    return "Last sync unavailable";
+  }
+
   return `Last sync ${new Intl.DateTimeFormat("en-SG", {
     month: "short",
     day: "numeric",
@@ -29,6 +32,16 @@ export function SyncButton({ initialLastSyncedAt }: { initialLastSyncedAt: strin
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState<string | null>(null);
+  const lastSyncedAtRef = useRef(initialLastSyncedAt);
+
+  useEffect(() => {
+    if (!isSyncing && lastSyncedAtRef.current !== initialLastSyncedAt) {
+      setStatusText(null);
+      setError(null);
+    }
+
+    lastSyncedAtRef.current = initialLastSyncedAt;
+  }, [initialLastSyncedAt, isSyncing]);
 
   const helperText = useMemo(
     () => statusText ?? formatLastSynced(initialLastSyncedAt),
@@ -39,42 +52,27 @@ export function SyncButton({ initialLastSyncedAt }: { initialLastSyncedAt: strin
     setIsModalOpen(false);
     setIsSyncing(true);
     setError(null);
-    setStatusText("Preparing ingestion pipeline...");
+    setStatusText("Preparing sync…");
 
     try {
-      // We'll pass the config via POST now to the sync API
       const response = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
 
-      if (!response.body) throw new Error("No response body");
+      await readSyncStream(response, (event: SyncEvent) => {
+        setStatusText(event.message);
 
-      const reader = response.body.getReader();
-      const textDecoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = textDecoder.decode(value);
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6)) as SyncProgress;
-              setStatusText(data.message);
-              if (data.status === "complete") {
-                router.refresh();
-              }
-            } catch {
-                // Ignore partial JSON chunks
-              }
-          }
+        if (event.status === "complete") {
+          setStatusText("Sync complete. Refreshing workspace…");
+          router.refresh();
         }
-      }
+
+        if (event.status === "error") {
+          throw new Error(event.message);
+        }
+      });
     } catch (syncError) {
       setError(syncError instanceof Error ? syncError.message : "Sync failed.");
     } finally {
@@ -91,18 +89,14 @@ export function SyncButton({ initialLastSyncedAt }: { initialLastSyncedAt: strin
           disabled={isSyncing}
           className="w-full rounded-2xl border border-blue-600 bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-100 transition hover:bg-blue-700 disabled:opacity-70 sm:w-auto"
         >
-          {isSyncing ? "Syncing..." : "Sync Canvas"}
+          {isSyncing ? "Syncing…" : "Sync Canvas"}
         </button>
-        <p className={`text-left text-[10px] font-medium sm:text-right ${error ? "text-rose-600" : "text-slate-500"}`}>
+        <p className={`text-left text-[11px] font-medium sm:text-right ${error ? "text-rose-600" : "text-slate-500"}`}>
           {error ?? helperText}
         </p>
       </div>
 
-      <SyncModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onConfirm={handleConfirmSync}
-      />
+      <SyncModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onConfirm={handleConfirmSync} />
     </>
   );
 }
