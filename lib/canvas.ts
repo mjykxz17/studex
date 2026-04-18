@@ -73,6 +73,23 @@ export interface CanvasAssignment {
   published?: boolean;
 }
 
+export interface CanvasSubmission {
+  id: number;
+  score?: number | null;
+  grade?: string | null;
+  submitted_at?: string | null;
+  graded_at?: string | null;
+  workflow_state?: string | null;
+  missing?: boolean;
+  late?: boolean;
+  excused?: boolean;
+  points_deducted?: number | null;
+}
+
+export interface CanvasAssignmentWithSubmission extends CanvasAssignment {
+  submission?: CanvasSubmission | null;
+}
+
 export interface CanvasFileDetails extends CanvasFile {
   url: string;
 }
@@ -286,6 +303,15 @@ export async function getAssignments(courseId: number | string): Promise<CanvasA
   });
 }
 
+export async function getAssignmentsWithSubmissions(
+  courseId: number | string,
+): Promise<CanvasAssignmentWithSubmission[]> {
+  return paginate<CanvasAssignmentWithSubmission>(`/courses/${courseId}/assignments`, {
+    order_by: "due_at",
+    "include[]": "submission",
+  });
+}
+
 export async function getFileDownloadUrl(fileId: number | string): Promise<string | null> {
   const response = await requestJson<CanvasFileDetails>(buildApiUrl(`/files/${fileId}`), {
     allowNotFound: true,
@@ -328,4 +354,107 @@ export async function downloadCanvasFile(fileId: number | string): Promise<Canva
   }
 
   return null;
+}
+
+export interface CanvasPage {
+  page_id: number;
+  url: string;
+  title: string;
+  updated_at?: string | null;
+  published?: boolean;
+  front_page?: boolean;
+}
+
+export interface CanvasPageWithBody extends CanvasPage {
+  body?: string | null;
+}
+
+export async function getPages(courseId: number | string): Promise<CanvasPage[]> {
+  return paginate<CanvasPage>(`/courses/${courseId}/pages`, {
+    sort: "updated_at",
+    order: "desc",
+    published: "true",
+  });
+}
+
+export async function getPage(
+  courseId: number | string,
+  pageUrl: string,
+): Promise<CanvasPageWithBody | null> {
+  const response = await requestJson<CanvasPageWithBody>(
+    buildApiUrl(`/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`),
+    { allowNotFound: true },
+  );
+  return response.data ?? null;
+}
+
+export type CanvasModuleItemType =
+  | "File"
+  | "Page"
+  | "Assignment"
+  | "Quiz"
+  | "Discussion"
+  | "ExternalUrl"
+  | "ExternalTool"
+  | "SubHeader";
+
+export interface CanvasModuleItem {
+  id: number;
+  title: string;
+  type: CanvasModuleItemType | string;
+  position: number;
+  indent: number;
+  content_id?: number | null;
+  page_url?: string | null;
+  external_url?: string | null;
+  completion_requirement?: {
+    type?: string;
+    completed?: boolean;
+  } | null;
+}
+
+export interface CanvasModule {
+  id: number;
+  name: string;
+  position: number;
+  unlock_at?: string | null;
+  state?: string | null;
+  items_count?: number;
+  items?: CanvasModuleItem[];
+}
+
+export async function getModules(courseId: number | string): Promise<CanvasModule[]> {
+  const baseUrl = buildApiUrl(`/courses/${courseId}/modules`, {
+    per_page: DEFAULT_PER_PAGE,
+  });
+  baseUrl.searchParams.append("include[]", "items");
+  baseUrl.searchParams.append("include[]", "content_details");
+
+  const items: CanvasModule[] = [];
+  let nextUrl: string | null = baseUrl.toString();
+  while (nextUrl) {
+    const response = await requestJson<CanvasModule[]>(nextUrl);
+    if (response.data) items.push(...response.data);
+    nextUrl = parseNextLink(response.headers.get("Link"));
+  }
+  return items;
+}
+
+export async function getModuleItems(
+  courseId: number | string,
+  moduleId: number | string,
+): Promise<CanvasModuleItem[]> {
+  const baseUrl = buildApiUrl(`/courses/${courseId}/modules/${moduleId}/items`, {
+    per_page: DEFAULT_PER_PAGE,
+  });
+  baseUrl.searchParams.append("include[]", "content_details");
+
+  const items: CanvasModuleItem[] = [];
+  let nextUrl: string | null = baseUrl.toString();
+  while (nextUrl) {
+    const response = await requestJson<CanvasModuleItem[]>(nextUrl);
+    if (response.data) items.push(...response.data);
+    nextUrl = parseNextLink(response.headers.get("Link"));
+  }
+  return items;
 }

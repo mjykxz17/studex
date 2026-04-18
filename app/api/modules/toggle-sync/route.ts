@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const user = await ensureDemoUser();
     const supabase = getSupabaseAdminClient();
     const { error } = await supabase
-      .from("modules")
+      .from("courses")
       .update({ sync_enabled: body.sync_enabled })
       .eq("id", body.moduleId)
       .eq("user_id", user.id);
