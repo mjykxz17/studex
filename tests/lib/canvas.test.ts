@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 
-import { getAssignmentsWithSubmissions, getPages, getPage } from "@/lib/canvas";
+import { getAssignmentsWithSubmissions, getPages, getPage, getModules, getModuleItems } from "@/lib/canvas";
 
 const originalFetch = globalThis.fetch;
 
@@ -97,5 +97,59 @@ describe("getPage", () => {
     expect(result).not.toBeNull();
     expect(result?.body).toContain("CS3235");
     expect(result?.url).toBe("syllabus");
+  });
+});
+
+describe("getModules", () => {
+  it("requests /courses/:id/modules with include=items and include=content_details", async () => {
+    const capturedCalls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      capturedCalls.push(url);
+      return jsonResponse([
+        {
+          id: 101,
+          name: "Week 1",
+          position: 1,
+          unlock_at: null,
+          state: "unlocked",
+          items_count: 3,
+          items: [
+            { id: 201, title: "Lecture 1 Slides", type: "File", position: 1, indent: 0, content_id: 301 },
+            { id: 202, title: "Week 1 Reading", type: "Page", position: 2, indent: 0, page_url: "week-1-reading" },
+            { id: 203, title: "External link", type: "ExternalUrl", position: 3, indent: 0, external_url: "https://example.com" },
+          ],
+        },
+      ]);
+    }) as unknown as typeof fetch;
+
+    const result = await getModules(12);
+
+    expect(capturedCalls[0]).toContain("/api/v1/courses/12/modules");
+    expect(capturedCalls[0]).toContain("include%5B%5D=items");
+    expect(capturedCalls[0]).toContain("include%5B%5D=content_details");
+    expect(result).toHaveLength(1);
+    expect(result[0].items).toHaveLength(3);
+    expect(result[0].items?.[0].type).toBe("File");
+  });
+});
+
+describe("getModuleItems", () => {
+  it("fetches items for a single module when the inline list was truncated", async () => {
+    const capturedCalls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      capturedCalls.push(url);
+      return jsonResponse([
+        { id: 210, title: "Item A", type: "File", position: 1, indent: 0, content_id: 301 },
+        { id: 211, title: "Item B", type: "Assignment", position: 2, indent: 0, content_id: 401 },
+      ]);
+    }) as unknown as typeof fetch;
+
+    const result = await getModuleItems(12, 101);
+
+    expect(capturedCalls[0]).toContain("/api/v1/courses/12/modules/101/items");
+    expect(capturedCalls[0]).toContain("include%5B%5D=content_details");
+    expect(result).toHaveLength(2);
   });
 });

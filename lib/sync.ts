@@ -10,12 +10,16 @@ import {
   getCourses,
   getFiles,
   getFileDownloadUrl,
+  getModules,
+  getModuleItems,
   getPage,
   getPages,
   type CanvasAnnouncement,
   type CanvasAssignmentWithSubmission,
   type CanvasCourse,
   type CanvasFile,
+  type CanvasModule,
+  type CanvasModuleItem,
   type CanvasPage,
 } from "@/lib/canvas";
 import { type SyncCounts, type SyncEvent } from "@/lib/contracts";
@@ -359,6 +363,97 @@ async function syncFile(params: {
   return { changed: true };
 }
 
+function resolveContentRef(item: CanvasModuleItem): string | null {
+  if (item.content_id) return String(item.content_id);
+  if (item.page_url) return item.page_url;
+  return null;
+}
+
+async function syncCourseModules(params: {
+  supabase: SupabaseClient;
+  userId: string;
+  course: CourseRow;
+  send: SyncSender;
+  counts: SyncCounts;
+}) {
+  const moduleCode = params.course.code ?? "MOD";
+
+  let canvasModules: CanvasModule[] = [];
+  try {
+    canvasModules = await getModules(params.course.canvas_course_id);
+  } catch (error) {
+    console.error(`Failed to fetch course modules for ${moduleCode}:`, error);
+    params.send({
+      status: "progress",
+      stage: "module",
+      moduleCode,
+      message: `Canvas modules fetch failed for ${moduleCode}; continuing.`,
+      counts: params.counts,
+    });
+    return;
+  }
+
+  // Upsert each module and collect the DB ids in order.
+  for (const module of canvasModules) {
+    const { data: moduleData, error: moduleError } = await params.supabase
+      .from("course_modules")
+      .upsert(
+        {
+          user_id: params.userId,
+          course_id: params.course.id,
+          canvas_module_id: String(module.id),
+          name: module.name,
+          position: module.position,
+          unlock_at: module.unlock_at ?? null,
+          state: module.state ?? null,
+          items_count: module.items_count ?? null,
+        },
+        { onConflict: "course_id, canvas_module_id" },
+      )
+      .select("id")
+      .single<{ id: string }>();
+
+    if (moduleError || !moduleData) {
+      console.error(`Failed to upsert course module ${module.id} in ${moduleCode}:`, moduleError);
+      continue;
+    }
+
+    // Decide whether to trust the inline items or fetch via getModuleItems.
+    let items = module.items ?? [];
+    const expected = module.items_count ?? items.length;
+    if (items.length < expected) {
+      try {
+        items = await getModuleItems(params.course.canvas_course_id, module.id);
+      } catch (error) {
+        console.error(`Failed to fetch items for module ${module.id} in ${moduleCode}:`, error);
+        continue;
+      }
+    }
+
+    if (items.length === 0) continue;
+
+    const itemRows = items.map((item) => ({
+      user_id: params.userId,
+      course_module_id: moduleData.id,
+      canvas_item_id: String(item.id),
+      title: item.title,
+      item_type: item.type,
+      position: item.position,
+      indent: item.indent,
+      content_ref: resolveContentRef(item),
+      external_url: item.external_url ?? null,
+    }));
+
+    const { error: itemsError } = await params.supabase
+      .from("course_module_items")
+      .upsert(itemRows, { onConflict: "course_module_id, canvas_item_id" });
+
+    if (itemsError) {
+      console.error(`Failed to upsert module items for ${module.id} in ${moduleCode}:`, itemsError);
+    }
+  }
+}
+
 type PageRow = {
   id: string;
   page_url: string | null;
@@ -653,6 +748,14 @@ async function processCourseSync(params: {
   }
 
   await syncPages({
+    supabase: params.supabase,
+    userId: params.userId,
+    course: params.course,
+    send: params.send,
+    counts: params.counts,
+  });
+
+  await syncCourseModules({
     supabase: params.supabase,
     userId: params.userId,
     course: params.course,
