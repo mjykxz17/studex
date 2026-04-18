@@ -73,6 +73,23 @@ export interface CanvasAssignment {
   published?: boolean;
 }
 
+export interface CanvasSubmission {
+  id: number;
+  score?: number | null;
+  grade?: string | null;
+  submitted_at?: string | null;
+  graded_at?: string | null;
+  workflow_state?: string | null;
+  missing?: boolean;
+  late?: boolean;
+  excused?: boolean;
+  points_deducted?: number | null;
+}
+
+export interface CanvasAssignmentWithSubmission extends CanvasAssignment {
+  submission?: CanvasSubmission | null;
+}
+
 export interface CanvasFileDetails extends CanvasFile {
   url: string;
 }
@@ -283,6 +300,15 @@ export async function getAnnouncements(courseId: number | string): Promise<Canva
 export async function getAssignments(courseId: number | string): Promise<CanvasAssignment[]> {
   return paginate<CanvasAssignment>(`/courses/${courseId}/assignments`, {
     order_by: "due_at",
+  });
+}
+
+export async function getAssignmentsWithSubmissions(
+  courseId: number | string,
+): Promise<CanvasAssignmentWithSubmission[]> {
+  return paginate<CanvasAssignmentWithSubmission>(`/courses/${courseId}/assignments`, {
+    order_by: "due_at",
+    "include[]": "submission",
   });
 }
 

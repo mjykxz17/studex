@@ -6,12 +6,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   getAnnouncements,
-  getAssignments,
+  getAssignmentsWithSubmissions,
   getCourses,
   getFiles,
   getFileDownloadUrl,
   type CanvasAnnouncement,
-  type CanvasAssignment,
+  type CanvasAssignmentWithSubmission,
   type CanvasCourse,
   type CanvasFile,
 } from "@/lib/canvas";
@@ -244,36 +244,67 @@ async function syncAssignment(params: {
   supabase: SupabaseClient;
   userId: string;
   course: CourseRow;
-  assignment: CanvasAssignment;
+  assignment: CanvasAssignmentWithSubmission;
   existing: TaskRow | undefined;
 }) {
   const descriptionText = sanitizeSyncText(stripHtml(params.assignment.description ?? ""));
   const descriptionHash = createContentHash(descriptionText);
   const dueAt = params.assignment.due_at ?? null;
 
-  if (params.existing && params.existing.due_at === dueAt && params.existing.description_hash === descriptionHash) {
-    return { changed: false };
+  const taskPayload = {
+    course_id: params.course.id,
+    user_id: params.userId,
+    title: sanitizeSyncText(params.assignment.name) || "Untitled task",
+    due_at: dueAt,
+    source: "canvas",
+    source_ref_id: String(params.assignment.id),
+    completed: false,
+    description_hash: descriptionHash,
+  };
+
+  const taskUnchanged =
+    params.existing && params.existing.due_at === dueAt && params.existing.description_hash === descriptionHash;
+
+  let taskId = params.existing?.id ?? null;
+
+  if (!taskUnchanged) {
+    const { data, error } = await params.supabase
+      .from("tasks")
+      .upsert(taskPayload, { onConflict: "user_id, source, source_ref_id" })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (error || !data) {
+      throw new Error(`Failed to upsert task: ${error?.message ?? "Unknown error"}`);
+    }
+
+    taskId = data.id;
   }
 
-  const { error } = await params.supabase.from("tasks").upsert(
-    {
-      course_id: params.course.id,
+  // Upsert grade if Canvas returned a submission for this assignment.
+  const submission = params.assignment.submission ?? null;
+  if (submission && taskId) {
+    const gradePayload = {
       user_id: params.userId,
-      title: sanitizeSyncText(params.assignment.name) || "Untitled task",
-      due_at: dueAt,
-      source: "canvas",
-      source_ref_id: String(params.assignment.id),
-      completed: false,
-      description_hash: descriptionHash,
-    },
-    { onConflict: "user_id, source, source_ref_id" },
-  );
+      assignment_id: taskId,
+      score: submission.score ?? null,
+      grade_text: submission.grade ?? null,
+      points_possible: params.assignment.points_possible ?? null,
+      submitted_at: submission.submitted_at ?? null,
+      graded_at: submission.graded_at ?? null,
+      state: submission.workflow_state ?? null,
+    };
 
-  if (error) {
-    throw new Error(`Failed to upsert task: ${error.message}`);
+    const { error: gradeError } = await params.supabase
+      .from("grades")
+      .upsert(gradePayload, { onConflict: "user_id, assignment_id" });
+
+    if (gradeError) {
+      throw new Error(`Failed to upsert grade: ${gradeError.message}`);
+    }
   }
 
-  return { changed: true };
+  return { changed: !taskUnchanged };
 }
 
 async function syncFile(params: {
@@ -349,7 +380,7 @@ async function processCourseSync(params: {
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
-    getAssignments(params.course.canvas_course_id).then(
+    getAssignmentsWithSubmissions(params.course.canvas_course_id).then(
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
