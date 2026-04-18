@@ -16,19 +16,3 @@ export type SyncEvent = {
   moduleCode?: string;
 };
 
-export type ChatSource = {
-  id: string;
-  label: string;
-  moduleCode: string;
-  sourceType: string;
-  similarity: number;
-  excerpt: string;
-};
-
-export type ChatResponse = {
-  answer?: string;
-  error?: string;
-  sources?: ChatSource[];
-  moduleId?: string | null;
-  model?: string | null;
-};
