@@ -11,15 +11,15 @@ begin
     alter table modules rename to courses;
   end if;
 
-  if exists (select 1 from information_schema.columns where table_name = 'canvas_files' and column_name = 'module_id') then
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'canvas_files' and column_name = 'module_id') then
     alter table canvas_files rename column module_id to course_id;
   end if;
 
-  if exists (select 1 from information_schema.columns where table_name = 'announcements' and column_name = 'module_id') then
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'announcements' and column_name = 'module_id') then
     alter table announcements rename column module_id to course_id;
   end if;
 
-  if exists (select 1 from information_schema.columns where table_name = 'tasks' and column_name = 'module_id') then
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'tasks' and column_name = 'module_id') then
     alter table tasks rename column module_id to course_id;
   end if;
 end $$;
