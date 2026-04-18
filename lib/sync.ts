@@ -394,19 +394,19 @@ async function syncCourseModules(params: {
   }
 
   // Upsert each module and collect the DB ids in order.
-  for (const module of canvasModules) {
+  for (const canvasModule of canvasModules) {
     const { data: moduleData, error: moduleError } = await params.supabase
       .from("course_modules")
       .upsert(
         {
           user_id: params.userId,
           course_id: params.course.id,
-          canvas_module_id: String(module.id),
-          name: module.name,
-          position: module.position,
-          unlock_at: module.unlock_at ?? null,
-          state: module.state ?? null,
-          items_count: module.items_count ?? null,
+          canvas_module_id: String(canvasModule.id),
+          name: canvasModule.name,
+          position: canvasModule.position,
+          unlock_at: canvasModule.unlock_at ?? null,
+          state: canvasModule.state ?? null,
+          items_count: canvasModule.items_count ?? null,
         },
         { onConflict: "course_id, canvas_module_id" },
       )
@@ -414,18 +414,18 @@ async function syncCourseModules(params: {
       .single<{ id: string }>();
 
     if (moduleError || !moduleData) {
-      console.error(`Failed to upsert course module ${module.id} in ${moduleCode}:`, moduleError);
+      console.error(`Failed to upsert course module ${canvasModule.id} in ${moduleCode}:`, moduleError);
       continue;
     }
 
     // Decide whether to trust the inline items or fetch via getModuleItems.
-    let items = module.items ?? [];
-    const expected = module.items_count ?? items.length;
+    let items = canvasModule.items ?? [];
+    const expected = canvasModule.items_count ?? items.length;
     if (items.length < expected) {
       try {
-        items = await getModuleItems(params.course.canvas_course_id, module.id);
+        items = await getModuleItems(params.course.canvas_course_id, canvasModule.id);
       } catch (error) {
-        console.error(`Failed to fetch items for module ${module.id} in ${moduleCode}:`, error);
+        console.error(`Failed to fetch items for module ${canvasModule.id} in ${moduleCode}:`, error);
         continue;
       }
     }
@@ -449,7 +449,7 @@ async function syncCourseModules(params: {
       .upsert(itemRows, { onConflict: "course_module_id, canvas_item_id" });
 
     if (itemsError) {
-      console.error(`Failed to upsert module items for ${module.id} in ${moduleCode}:`, itemsError);
+      console.error(`Failed to upsert module items for ${canvasModule.id} in ${moduleCode}:`, itemsError);
     }
   }
 }
