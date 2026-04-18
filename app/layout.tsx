@@ -19,7 +19,7 @@ const lora = Lora({
 
 export const metadata: Metadata = {
   title: "Studex",
-  description: "AI-powered student dashboard for Canvas, tasks, announcements, and study chat.",
+  description: "A faster, cleaner window into your NUS Canvas workspace.",
 };
 
 export default function RootLayout({

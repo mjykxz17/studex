@@ -17,7 +17,7 @@ export function ManageView({
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">Manage</p>
         <h1 className="mt-2 font-[var(--font-lora)] text-[28px] font-medium tracking-[-0.03em] text-stone-950">Control what powers the workspace.</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-500">
-          Enable only the modules you want in the command board, module workspace views, chat retrieval, and file intelligence surfaces.
+          Enable only the modules you want in the command board, module workspace views, and file listings.
         </p>
       </section>
 

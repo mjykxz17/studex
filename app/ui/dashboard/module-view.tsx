@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 
-import { ChatPanel } from "@/app/ui/chat-panel";
 import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/dashboard";
 
 import { FileCard } from "./file-card";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
 
-type ModuleTab = "overview" | "files" | "chat" | "nusmods";
+type ModuleTab = "overview" | "files" | "nusmods";
 
 export function ModuleView({
   module,
@@ -31,10 +30,6 @@ export function ModuleView({
     files: {
       tab: `module-tab-files-${module.id}`,
       panel: `module-panel-files-${module.id}`,
-    },
-    chat: {
-      tab: `module-tab-chat-${module.id}`,
-      panel: `module-panel-chat-${module.id}`,
     },
     nusmods: {
       tab: `module-tab-nusmods-${module.id}`,
@@ -91,7 +86,6 @@ export function ModuleView({
           {[
             ["overview", "Overview"],
             ["files", "Files"],
-            ["chat", "Chat"],
             ["nusmods", "NUSMods"],
           ].map(([key, label]) => {
             const active = tab === key;
@@ -187,28 +181,6 @@ export function ModuleView({
               </div>
             )}
           </SectionCard>
-        </div>
-      ) : null}
-
-      {tab === "chat" ? (
-        <div id={tabIds.chat.panel} role="tabpanel" aria-labelledby={tabIds.chat.tab}>
-          <ChatPanel
-            moduleId={module.id}
-            activeModule={module.code}
-            suggestedPrompts={[
-              `Summarise the latest announcement for ${module.code}.`,
-              `What files should I revise first for ${module.code}?`,
-              `What is due next in ${module.code}?`,
-            ]}
-            initialMessages={[
-              {
-                id: `assistant-${module.id}`,
-                role: "assistant",
-                content: `Ask about ${module.code}. I’ll answer only from the synced material for this module.`,
-              },
-            ]}
-            compact={false}
-          />
         </div>
       ) : null}
 

@@ -57,7 +57,7 @@ function TopBar({
     activeModuleCode
       ? "Module workspace"
       : rootView === "home"
-        ? "Work, changes, schedule, and grounded chat."
+        ? "Work, changes, and schedule."
         : rootView === "modules"
           ? "Course-centric workspaces."
           : rootView === "nusmods"

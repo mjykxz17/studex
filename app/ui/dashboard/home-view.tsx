@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-import { ChatPanel } from "@/app/ui/chat-panel";
 import { FilePreviewDialog } from "@/app/ui/file-preview-dialog";
 import type { DashboardChange, DashboardData, ModuleSummary } from "@/lib/dashboard";
 
@@ -136,12 +135,6 @@ export function HomeView({
           </div>
 
           <div className="space-y-4">
-            <ChatPanel
-              activeModule="All synced modules"
-              suggestedPrompts={data.chat.suggestedPrompts}
-              initialMessages={data.chat.recentMessages}
-              compact={true}
-            />
             <UpcomingPanel tasks={upcomingTasks} />
             <ChangesPanel
               changes={recentChanges}
