@@ -39,9 +39,12 @@ create table canvas_files (
  file_type text,
  canvas_url text,
  extracted_text text,
+ ai_summary text,
+ content_hash text,
  processed bool default false,
  week_number int,
  uploaded_at timestamptz,
+ source_updated_at timestamptz,
  unique(user_id, canvas_file_id)
 );
 
@@ -56,6 +59,8 @@ create table announcements (
  importance text,
  detected_deadlines jsonb,
  posted_at timestamptz,
+ content_hash text,
+ source_updated_at timestamptz,
  unique(user_id, canvas_announcement_id)
 );
 
@@ -68,6 +73,7 @@ create table tasks (
  source text,
  source_ref_id text,
  completed bool default false,
+ description_hash text,
  weight float,
  unique(user_id, source, source_ref_id)
 );
@@ -78,6 +84,8 @@ create table embeddings (
  module_id uuid references modules(id) not null,
  source_type text not null,
  source_id uuid not null,
+ source_label text,
+ module_code text,
  chunk_index int not null,
  chunk_text text,
  embedding vector(384),
@@ -100,9 +108,17 @@ create function match_chunks(
  match_module_id uuid,
  match_count int
 )
-returns table(id uuid, chunk_text text, source_type text, similarity float)
+returns table(
+ id uuid,
+ source_id uuid,
+ chunk_text text,
+ source_type text,
+ source_label text,
+ module_code text,
+ similarity float
+)
 language sql as $$
- select id, chunk_text, source_type,
+ select id, source_id, chunk_text, source_type, source_label, module_code,
  1 - (embedding <=> query_embedding) as similarity
  from embeddings
  where user_id = match_user_id

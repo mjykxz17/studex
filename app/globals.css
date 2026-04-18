@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f7ff;
-  --foreground: #0f172a;
+  --background: #f7f6f3;
+  --foreground: #1c1917;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -25,11 +26,15 @@ body {
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(167, 139, 250, 0.18), transparent 28%),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 26%),
-    linear-gradient(180deg, #f7f8ff 0%, #eef3ff 100%);
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.06), transparent 20%),
+    linear-gradient(180deg, #f7f6f3 0%, #efede8 100%);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.18);
 }
 
 button,
@@ -39,6 +44,17 @@ textarea {
 
 button {
   border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .studex-shell {
