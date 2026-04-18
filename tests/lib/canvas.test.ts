@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 
-import { getAssignmentsWithSubmissions } from "@/lib/canvas";
+import { getAssignmentsWithSubmissions, getPages, getPage } from "@/lib/canvas";
 
 const originalFetch = globalThis.fetch;
 
@@ -53,5 +53,49 @@ describe("getAssignmentsWithSubmissions", () => {
     expect(result[0].id).toBe(42);
     expect(result[0].submission?.score).toBe(85);
     expect(result[0].submission?.workflow_state).toBe("graded");
+  });
+});
+
+describe("getPages", () => {
+  it("fetches /courses/:id/pages (list only, no body)", async () => {
+    const capturedCalls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      capturedCalls.push(url);
+      return jsonResponse([
+        { page_id: 1, url: "syllabus", title: "Syllabus", updated_at: "2026-03-01T00:00:00Z", published: true, front_page: true },
+        { page_id: 2, url: "project-brief", title: "Project Brief", updated_at: "2026-04-10T00:00:00Z", published: true, front_page: false },
+      ]);
+    }) as unknown as typeof fetch;
+
+    const result = await getPages(11);
+
+    expect(capturedCalls).toHaveLength(1);
+    expect(capturedCalls[0]).toContain("/api/v1/courses/11/pages");
+    expect(result).toHaveLength(2);
+    expect(result[0].url).toBe("syllabus");
+    expect(result[0].front_page).toBe(true);
+  });
+});
+
+describe("getPage", () => {
+  it("fetches /courses/:id/pages/:url and returns the full page including body", async () => {
+    globalThis.fetch = vi.fn(async () =>
+      jsonResponse({
+        page_id: 1,
+        url: "syllabus",
+        title: "Syllabus",
+        body: "<p>Welcome to CS3235.</p>",
+        updated_at: "2026-03-01T00:00:00Z",
+        published: true,
+        front_page: true,
+      }),
+    ) as unknown as typeof fetch;
+
+    const result = await getPage(11, "syllabus");
+
+    expect(result).not.toBeNull();
+    expect(result?.body).toContain("CS3235");
+    expect(result?.url).toBe("syllabus");
   });
 });

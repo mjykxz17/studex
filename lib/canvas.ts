@@ -355,3 +355,35 @@ export async function downloadCanvasFile(fileId: number | string): Promise<Canva
 
   return null;
 }
+
+export interface CanvasPage {
+  page_id: number;
+  url: string;
+  title: string;
+  updated_at?: string | null;
+  published?: boolean;
+  front_page?: boolean;
+}
+
+export interface CanvasPageWithBody extends CanvasPage {
+  body?: string | null;
+}
+
+export async function getPages(courseId: number | string): Promise<CanvasPage[]> {
+  return paginate<CanvasPage>(`/courses/${courseId}/pages`, {
+    sort: "updated_at",
+    order: "desc",
+    published: "true",
+  });
+}
+
+export async function getPage(
+  courseId: number | string,
+  pageUrl: string,
+): Promise<CanvasPageWithBody | null> {
+  const response = await requestJson<CanvasPageWithBody>(
+    buildApiUrl(`/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`),
+    { allowNotFound: true },
+  );
+  return response.data ?? null;
+}

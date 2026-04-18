@@ -10,10 +10,13 @@ import {
   getCourses,
   getFiles,
   getFileDownloadUrl,
+  getPage,
+  getPages,
   type CanvasAnnouncement,
   type CanvasAssignmentWithSubmission,
   type CanvasCourse,
   type CanvasFile,
+  type CanvasPage,
 } from "@/lib/canvas";
 import { type SyncCounts, type SyncEvent } from "@/lib/contracts";
 import { ensureDemoUser } from "@/lib/demo-user";
@@ -356,6 +359,130 @@ async function syncFile(params: {
   return { changed: true };
 }
 
+type PageRow = {
+  id: string;
+  page_url: string | null;
+  updated_at: string | null;
+};
+
+async function syncPages(params: {
+  supabase: SupabaseClient;
+  userId: string;
+  course: CourseRow;
+  send: SyncSender;
+  counts: SyncCounts;
+}) {
+  const moduleCode = params.course.code ?? "MOD";
+
+  let canvasPages: CanvasPage[] = [];
+  try {
+    canvasPages = await getPages(params.course.canvas_course_id);
+  } catch (error) {
+    console.error(`Failed to fetch pages for ${moduleCode}:`, error);
+    params.send({
+      status: "progress",
+      stage: "file",
+      moduleCode,
+      message: `Canvas pages fetch failed for ${moduleCode}; continuing.`,
+      counts: params.counts,
+    });
+    return;
+  }
+
+  // Load existing cached pages for change detection.
+  const { data: existingData, error: existingError } = await params.supabase
+    .from("canvas_pages")
+    .select("id, page_url, updated_at")
+    .eq("course_id", params.course.id);
+
+  if (existingError) {
+    throw new Error(`Failed to load existing pages for ${moduleCode}: ${existingError.message}`);
+  }
+
+  const existingByUrl = new Map(((existingData ?? []) as PageRow[]).map((row) => [String(row.page_url), row]));
+
+  // Step 1: upsert metadata for every Canvas page in one shot.
+  const metadataRows = canvasPages.map((page) => ({
+    user_id: params.userId,
+    course_id: params.course.id,
+    page_url: page.url,
+    title: page.title,
+    updated_at: page.updated_at ?? null,
+    published: page.published ?? true,
+    front_page: page.front_page ?? false,
+  }));
+
+  if (metadataRows.length > 0) {
+    const { error: metaError } = await params.supabase
+      .from("canvas_pages")
+      .upsert(metadataRows, { onConflict: "course_id, page_url" });
+
+    if (metaError) {
+      throw new Error(`Failed to upsert page metadata: ${metaError.message}`);
+    }
+  }
+
+  // Step 2: for each page whose Canvas updated_at is newer than the cached copy,
+  // fetch the body and update that row. Bounded concurrency cap of 5.
+  const stalePages = canvasPages.filter((page) => {
+    const existing = existingByUrl.get(page.url);
+    if (!existing) return true;
+    if (!existing.updated_at) return true;
+    if (!page.updated_at) return false;
+    return new Date(page.updated_at).getTime() > new Date(existing.updated_at).getTime();
+  });
+
+  const CONCURRENCY = 5;
+  let inFlight = 0;
+  let index = 0;
+  await new Promise<void>((resolve, reject) => {
+    const next = () => {
+      if (index >= stalePages.length && inFlight === 0) {
+        resolve();
+        return;
+      }
+      while (inFlight < CONCURRENCY && index < stalePages.length) {
+        const page = stalePages[index];
+        index += 1;
+        inFlight += 1;
+        (async () => {
+          try {
+            const full = await getPage(params.course.canvas_course_id, page.url);
+            if (full) {
+              const { error } = await params.supabase
+                .from("canvas_pages")
+                .update({ body_html: full.body ?? null })
+                .eq("course_id", params.course.id)
+                .eq("page_url", page.url);
+              if (error) throw error;
+              params.send({
+                status: "progress",
+                stage: "file",
+                moduleCode,
+                message: `Updated page: ${page.title}`,
+                counts: params.counts,
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to sync page ${page.url} in ${moduleCode}:`, error);
+            params.send({
+              status: "progress",
+              stage: "file",
+              moduleCode,
+              message: `Skipped page "${page.title}" after a sync error.`,
+              counts: params.counts,
+            });
+          } finally {
+            inFlight -= 1;
+            next();
+          }
+        })().catch(reject);
+      }
+    };
+    next();
+  });
+}
+
 async function processCourseSync(params: {
   supabase: SupabaseClient;
   userId: string;
@@ -524,6 +651,14 @@ async function processCourseSync(params: {
       }
     }
   }
+
+  await syncPages({
+    supabase: params.supabase,
+    userId: params.userId,
+    course: params.course,
+    send: params.send,
+    counts: params.counts,
+  });
 
   params.counts.modules += 1;
   await params.supabase

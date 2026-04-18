@@ -88,3 +88,16 @@ create table grades (
   state text,
   unique (user_id, assignment_id)
 );
+
+create table canvas_pages (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references users(id),
+  course_id uuid references courses(id),
+  page_url text,
+  title text,
+  body_html text,
+  updated_at timestamptz,
+  published bool default true,
+  front_page bool default false,
+  unique (course_id, page_url)
+);
