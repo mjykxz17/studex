@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { FilePreviewDialog } from "@/app/ui/file-preview-dialog";
-import type { DashboardChange, DashboardData, ModuleSummary } from "@/lib/dashboard";
+import type { DashboardChange, DashboardData, ModuleSummary } from "@/lib/contracts";
 
 import { FileCard } from "./file-card";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";

@@ -1,4 +1,4 @@
-import type { ModuleSummary, WeeklyTask } from "@/lib/dashboard";
+import type { ModuleSummary, WeeklyTask } from "@/lib/contracts";
 
 import { colorForModule, Pill } from "./shared";
 

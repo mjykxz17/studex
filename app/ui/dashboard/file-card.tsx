@@ -1,5 +1,5 @@
 import { FilePreviewDialog } from "@/app/ui/file-preview-dialog";
-import type { CanvasFileSummary } from "@/lib/dashboard";
+import type { CanvasFileSummary } from "@/lib/contracts";
 
 import { Pill } from "./shared";
 

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import DashboardClient from "@/app/dashboard-client";
-import type { DashboardData } from "@/lib/dashboard";
+import type { DashboardData } from "@/lib/contracts";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({

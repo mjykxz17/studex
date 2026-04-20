@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/dashboard";
+import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/contracts";
 
 import { FileCard } from "./file-card";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";

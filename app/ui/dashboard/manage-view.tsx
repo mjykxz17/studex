@@ -1,4 +1,4 @@
-import type { ModuleSummary } from "@/lib/dashboard";
+import type { ModuleSummary } from "@/lib/contracts";
 
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
 
