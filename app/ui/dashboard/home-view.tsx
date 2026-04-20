@@ -25,6 +25,7 @@ export function HomeView({
   onMarkAnnouncementSeen: (id: string) => void;
 }) {
   const [weekOffset, setWeekOffset] = useState(0);
+  const [now] = useState(() => Date.now());
 
   const activeModules = useMemo(() => data.modules.filter((module) => module.sync_enabled), [data.modules]);
   const activeModuleCodes = useMemo(() => new Set(activeModules.map((module) => module.code)), [activeModules]);
@@ -50,7 +51,7 @@ export function HomeView({
     [activeModuleCodes, data.recentGrades],
   );
   const dueThisWeek = useMemo(() => {
-    const horizon = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const horizon = now + 7 * 24 * 60 * 60 * 1000;
     return [...filteredTasks]
       .filter((task) => {
         if (!task.dueDate) return false;
@@ -59,7 +60,7 @@ export function HomeView({
       })
       .sort((left, right) => new Date(left.dueDate!).getTime() - new Date(right.dueDate!).getTime())
       .slice(0, 6);
-  }, [filteredTasks]);
+  }, [filteredTasks, now]);
 
   const unreadAnnouncementCount = filteredAnnouncements.filter(
     (announcement) => !seenAnnouncements[announcement.id],
