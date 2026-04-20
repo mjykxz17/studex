@@ -41,6 +41,14 @@ export function HomeView({
     () => data.recentFiles.filter((file) => activeModuleCodes.has(file.moduleCode)).slice(0, 8),
     [activeModuleCodes, data.recentFiles],
   );
+  const filteredCourseProgress = useMemo(
+    () => data.courseProgress.filter((course) => activeModuleCodes.has(course.moduleCode)),
+    [activeModuleCodes, data.courseProgress],
+  );
+  const filteredRecentGrades = useMemo(
+    () => data.recentGrades.filter((grade) => activeModuleCodes.has(grade.moduleCode)),
+    [activeModuleCodes, data.recentGrades],
+  );
   const dueThisWeek = useMemo(() => {
     const horizon = Date.now() + 7 * 24 * 60 * 60 * 1000;
     return [...filteredTasks]
@@ -85,11 +93,8 @@ export function HomeView({
           </div>
 
           <div className="space-y-4">
-            <CourseProgressWidget
-              courses={data.courseProgress.filter((course) => activeModuleCodes.has(course.moduleCode))}
-              onOpenModule={onOpenModule}
-            />
-            <RecentGradesWidget grades={data.recentGrades.filter((grade) => activeModuleCodes.has(grade.moduleCode))} />
+            <CourseProgressWidget courses={filteredCourseProgress} onOpenModule={onOpenModule} />
+            <RecentGradesWidget grades={filteredRecentGrades} />
             <CourseListWidget modules={activeModules} onOpenModule={onOpenModule} />
           </div>
         </div>
