@@ -28,12 +28,19 @@ export function RecentAnnouncementsWidget({
             const unseen = !seenAnnouncements[announcement.id];
             const isExpanded = !!expanded[announcement.id];
             return (
-              <button
+              <div
                 key={announcement.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => toggle(announcement.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    toggle(announcement.id);
+                  }
+                }}
                 aria-expanded={isExpanded}
-                className={`w-full rounded-[10px] border px-3 py-3 text-left ${unseen ? "border-blue-200 bg-blue-50/40" : "border-stone-200 bg-[#fcfbf9]"}`}
+                className={`w-full rounded-[10px] border px-3 py-3 text-left cursor-pointer ${unseen ? "border-blue-200 bg-blue-50/40" : "border-stone-200 bg-[#fcfbf9]"}`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.08em]" style={{ color: colorForModule(announcement.moduleCode) }}>
@@ -47,26 +54,19 @@ export function RecentAnnouncementsWidget({
                 </p>
                 {isExpanded ? (
                   <div className="mt-3 flex items-center gap-2">
-                    <span
-                      role="button"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       onClick={(event) => {
                         event.stopPropagation();
                         onMarkAnnouncementSeen(announcement.id);
                       }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.stopPropagation();
-                          onMarkAnnouncementSeen(announcement.id);
-                        }
-                      }}
                       className="rounded-[7px] border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-stone-600"
                     >
                       {seenAnnouncements[announcement.id] ? "Seen" : "Mark seen"}
-                    </span>
+                    </button>
                   </div>
                 ) : null}
-              </button>
+              </div>
             );
           })}
         </div>
