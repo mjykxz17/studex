@@ -766,7 +766,7 @@ async function processCourseSync(params: {
   params.counts.modules += 1;
   await params.supabase
     .from("courses")
-    .update({ last_canvas_sync: new Date().toISOString() })
+    .update({ last_canvas_sync: new Date().toISOString(), sync_enabled: true })
     .eq("id", params.course.id)
     .eq("user_id", params.userId);
 }
