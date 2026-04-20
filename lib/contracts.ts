@@ -93,6 +93,29 @@ export type ModuleSummary = {
   nusmods?: NUSModsData | null;
 };
 
+export type GradeSummary = {
+  id: string;
+  moduleCode: string;
+  assignmentTitle: string;
+  score: number | null;
+  gradeText: string | null;
+  pointsPossible: number | null;
+  state: "submitted" | "graded" | "missing" | "unsubmitted" | null;
+  gradedAt: string | null;
+  gradedLabel: string;
+  canvasUrl: string | null;
+};
+
+export type CourseProgressSummary = {
+  courseId: string;
+  moduleCode: string;
+  courseTitle: string;
+  totalModules: number;
+  currentModulePosition: number | null;
+  currentModuleName: string | null;
+  nextItemTitle: string | null;
+};
+
 export type DashboardData = {
   overview: DashboardOverview;
   modules: ModuleSummary[];
@@ -100,6 +123,8 @@ export type DashboardData = {
   announcements: AnnouncementSummary[];
   recentFiles: Array<CanvasFileSummary & { moduleCode: string; moduleTitle: string }>;
   latestChanges: DashboardChange[];
+  recentGrades: GradeSummary[];
+  courseProgress: CourseProgressSummary[];
   source: "live" | "fallback";
   status: "ready" | "needs-setup" | "error";
   setupMessage: string;

@@ -6,8 +6,10 @@ import { hasSupabaseConfig } from "@/lib/config";
 import type {
   AnnouncementSummary,
   CanvasFileSummary,
+  CourseProgressSummary,
   DashboardChange,
   DashboardData,
+  GradeSummary,
   ModuleSummary,
   WeeklyTask,
 } from "@/lib/contracts";
@@ -50,6 +52,45 @@ type AnnouncementQueryRow = {
   courses: RelationRecord | RelationRecord[] | null;
 };
 
+type GradeQueryRow = {
+  id: string;
+  score: number | null;
+  grade_text: string | null;
+  points_possible: number | null;
+  graded_at: string | null;
+  state: string | null;
+  tasks:
+    | {
+        id: string;
+        title: string | null;
+        source_ref_id: string | null;
+        courses:
+          | { code: string | null; canvas_course_id: string | null }
+          | Array<{ code: string | null; canvas_course_id: string | null }>
+          | null;
+      }
+    | null;
+};
+
+type CourseModuleQueryRow = {
+  id: string;
+  course_id: string;
+  name: string | null;
+  position: number | null;
+  state: string | null;
+  items_count: number | null;
+  courses:
+    | { code: string | null; title: string | null }
+    | Array<{ code: string | null; title: string | null }>
+    | null;
+  course_module_items: Array<{
+    id: string;
+    title: string | null;
+    item_type: string | null;
+    position: number | null;
+  }> | null;
+};
+
 
 export const FALLBACK_DASHBOARD: DashboardData = {
   overview: {
@@ -71,6 +112,8 @@ export const FALLBACK_DASHBOARD: DashboardData = {
   announcements: [],
   recentFiles: [],
   latestChanges: [],
+  recentGrades: [],
+  courseProgress: [],
 };
 
 const weekdayFormatter = new Intl.DateTimeFormat("en-SG", {
@@ -313,6 +356,27 @@ async function loadAnnouncementRows(supabase: ReturnType<typeof createServiceCli
     .order("posted_at", { ascending: false, nullsFirst: false });
 }
 
+async function loadGradeRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
+  return supabase
+    .from("grades")
+    .select(
+      "id, score, grade_text, points_possible, graded_at, state, tasks(id, title, source_ref_id, courses(code, canvas_course_id))",
+    )
+    .eq("user_id", userId)
+    .order("graded_at", { ascending: false, nullsFirst: false })
+    .limit(5);
+}
+
+async function loadCourseModuleRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
+  return supabase
+    .from("course_modules")
+    .select(
+      "id, course_id, name, position, state, items_count, courses(code, title), course_module_items(id, title, item_type, position)",
+    )
+    .eq("user_id", userId)
+    .order("position", { ascending: true });
+}
+
 function buildFileSummary(row: ModuleFileRow): CanvasFileSummary {
   const name = row.filename ?? "Untitled file";
   const extractedText = row.extracted_text ?? null;
@@ -360,6 +424,83 @@ function buildLatestChanges(announcements: AnnouncementSummary[], recentFiles: A
   return sortNewestFirst([...announcementChanges, ...fileChanges], (change) => change.happenedAt).slice(0, 12);
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function deriveCanvasAssignmentUrl(
+  canvasBaseUrl: string,
+  canvasCourseId: string | null,
+  sourceRefId: string | null,
+): string | null {
+  if (!canvasCourseId || !sourceRefId) return null;
+  return `${canvasBaseUrl.replace(/\/+$/, "")}/courses/${canvasCourseId}/assignments/${sourceRefId}`;
+}
+
+function buildGradeSummary(row: GradeQueryRow, canvasBaseUrl: string): GradeSummary {
+  const task = row.tasks;
+  const course = firstRelation(task?.courses ?? null);
+  const moduleCode = course?.code ?? "MOD";
+  const canvasCourseId = course?.canvas_course_id ?? null;
+  const sourceRefId = task?.source_ref_id ?? null;
+  const state = row.state === "submitted" || row.state === "graded" || row.state === "missing" || row.state === "unsubmitted"
+    ? (row.state as GradeSummary["state"])
+    : null;
+
+  return {
+    id: row.id,
+    moduleCode,
+    assignmentTitle: task?.title ?? "Untitled assignment",
+    score: row.score,
+    gradeText: row.grade_text,
+    pointsPossible: row.points_possible,
+    state,
+    gradedAt: row.graded_at,
+    gradedLabel: formatRelativeDayLabel(row.graded_at),
+    canvasUrl: deriveCanvasAssignmentUrl(canvasBaseUrl, canvasCourseId, sourceRefId),
+  };
+}
+
+function buildCourseProgressSummaries(rows: CourseModuleQueryRow[]): CourseProgressSummary[] {
+  // Group modules by course_id, keeping the grouping order stable (first-seen).
+  const byCourse = new Map<string, CourseModuleQueryRow[]>();
+  for (const row of rows) {
+    const list = byCourse.get(row.course_id);
+    if (list) {
+      list.push(row);
+    } else {
+      byCourse.set(row.course_id, [row]);
+    }
+  }
+
+  const summaries: CourseProgressSummary[] = [];
+  for (const [courseId, courseModules] of byCourse.entries()) {
+    const sorted = [...courseModules].sort((left, right) => (left.position ?? 0) - (right.position ?? 0));
+    const course = firstRelation(sorted[0]?.courses ?? null);
+    const moduleCode = course?.code ?? "MOD";
+    const courseTitle = course?.title ?? "Untitled course";
+
+    const currentModule =
+      sorted.find((module) => module.state !== "completed") ?? sorted[sorted.length - 1] ?? null;
+    const nextItem = (currentModule?.course_module_items ?? [])
+      .filter((item) => item.item_type !== "SubHeader")
+      .sort((left, right) => (left.position ?? 0) - (right.position ?? 0))[0];
+
+    summaries.push({
+      courseId,
+      moduleCode,
+      courseTitle,
+      totalModules: sorted.length,
+      currentModulePosition: currentModule?.position ?? null,
+      currentModuleName: currentModule?.name ?? null,
+      nextItemTitle: nextItem?.title ?? null,
+    });
+  }
+
+  return summaries;
+}
+
 export async function loadDashboardData(): Promise<DashboardData> {
   if (!hasSupabaseConfig()) {
     return FALLBACK_DASHBOARD;
@@ -392,6 +533,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
       { data: modulesData, error: modulesError },
       { data: tasksData, error: tasksError },
       { data: announcementsData, error: announcementsError },
+      { data: gradesData, error: gradesError },
+      { data: courseModulesData, error: courseModulesError },
     ] = await Promise.all([
       loadModuleRows(supabase, userId),
       supabase
@@ -401,10 +544,19 @@ export async function loadDashboardData(): Promise<DashboardData> {
         .eq("completed", false)
         .order("due_at", { ascending: true, nullsFirst: false }),
       loadAnnouncementRows(supabase, userId),
+      loadGradeRows(supabase, userId),
+      loadCourseModuleRows(supabase, userId),
     ]);
 
-    if (modulesError || tasksError || announcementsError) {
-      throw new Error(modulesError?.message ?? tasksError?.message ?? announcementsError?.message ?? "Failed to load dashboard data.");
+    if (modulesError || tasksError || announcementsError || gradesError || courseModulesError) {
+      throw new Error(
+        modulesError?.message ??
+          tasksError?.message ??
+          announcementsError?.message ??
+          gradesError?.message ??
+          courseModulesError?.message ??
+          "Failed to load dashboard data.",
+      );
     }
 
     const tasks: WeeklyTask[] = ((tasksData ?? []) as TaskQueryRow[]).map((task) => ({
@@ -486,6 +638,12 @@ export async function loadDashboardData(): Promise<DashboardData> {
     const hasLiveContent = modules.length > 0 || tasks.length > 0 || announcements.length > 0;
     const syncedModules = modules.filter((module) => module.sync_enabled);
 
+    const canvasBaseUrl = process.env.CANVAS_BASE_URL?.trim() || "https://canvas.nus.edu.sg";
+    const recentGrades: GradeSummary[] = ((gradesData ?? []) as unknown as GradeQueryRow[]).map((row) =>
+      buildGradeSummary(row, canvasBaseUrl),
+    );
+    const courseProgress = buildCourseProgressSummaries((courseModulesData ?? []) as unknown as CourseModuleQueryRow[]);
+
     return {
       overview: {
         syncedModuleCount: syncedModules.length,
@@ -507,6 +665,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
       announcements,
       recentFiles,
       latestChanges,
+      recentGrades,
+      courseProgress,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : FALLBACK_DASHBOARD.setupMessage;
