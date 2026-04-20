@@ -15,7 +15,7 @@ export async function GET() {
     const user = await ensureDemoUser();
     const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
-      .from("modules")
+      .from("courses")
       .select("id, code, title, sync_enabled")
       .eq("user_id", user.id)
       .order("code", { ascending: true });

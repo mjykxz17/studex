@@ -6,14 +6,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   getAnnouncements,
-  getAssignments,
+  getAssignmentsWithSubmissions,
   getCourses,
   getFiles,
   getFileDownloadUrl,
+  getModules,
+  getModuleItems,
+  getPage,
+  getPages,
   type CanvasAnnouncement,
-  type CanvasAssignment,
+  type CanvasAssignmentWithSubmission,
   type CanvasCourse,
   type CanvasFile,
+  type CanvasModule,
+  type CanvasModuleItem,
+  type CanvasPage,
 } from "@/lib/canvas";
 import { type SyncCounts, type SyncEvent } from "@/lib/contracts";
 import { ensureDemoUser } from "@/lib/demo-user";
@@ -22,7 +29,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type SyncSender = (event: SyncEvent) => void;
 
-type ModuleRow = {
+type CourseRow = {
   id: string;
   canvas_course_id: string;
   code: string | null;
@@ -129,11 +136,11 @@ function inferModuleCode(course: CanvasCourse): string {
   return sanitizeSyncText(course.course_code) || sanitizeSyncText(course.name) || `course-${course.id}`;
 }
 
-async function upsertModule(userId: string, course: CanvasCourse) {
+async function upsertCourse(userId: string, course: CanvasCourse) {
   const supabase = getSupabaseAdminClient();
   const code = inferModuleCode(course);
   const { data, error } = await supabase
-    .from("modules")
+    .from("courses")
     .upsert(
       {
         user_id: userId,
@@ -145,10 +152,10 @@ async function upsertModule(userId: string, course: CanvasCourse) {
       { onConflict: "user_id, canvas_course_id" },
     )
     .select("id, canvas_course_id, code, title, sync_enabled")
-    .single<ModuleRow>();
+    .single<CourseRow>();
 
   if (error || !data) {
-    throw new Error(`Failed to upsert module ${code}: ${error?.message ?? "Unknown error"}`);
+    throw new Error(`Failed to upsert course ${code}: ${error?.message ?? "Unknown error"}`);
   }
 
   return data;
@@ -162,21 +169,21 @@ async function getSafeFileDownloadUrl(fileId: number | string) {
   }
 }
 
-async function loadExistingState(supabase: SupabaseClient, moduleId: string) {
+async function loadExistingState(supabase: SupabaseClient, courseId: string) {
   const [announcementsResult, tasksResult, filesResult] = await Promise.all([
     supabase
       .from("announcements")
       .select("id, canvas_announcement_id, source_updated_at, content_hash")
-      .eq("module_id", moduleId),
+      .eq("course_id", courseId),
     supabase
       .from("tasks")
       .select("id, source_ref_id, due_at, description_hash")
-      .eq("module_id", moduleId)
+      .eq("course_id", courseId)
       .eq("source", "canvas"),
     supabase
       .from("canvas_files")
       .select("id, canvas_file_id, source_updated_at, content_hash, processed")
-      .eq("module_id", moduleId),
+      .eq("course_id", courseId),
   ]);
 
   if (announcementsResult.error) {
@@ -203,7 +210,7 @@ async function loadExistingState(supabase: SupabaseClient, moduleId: string) {
 async function syncAnnouncement(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
+  course: CourseRow;
   announcement: CanvasAnnouncement;
   existing: AnnouncementRow | undefined;
 }) {
@@ -221,7 +228,7 @@ async function syncAnnouncement(params: {
 
   const { error } = await params.supabase.from("announcements").upsert(
     {
-      module_id: params.module.id,
+      course_id: params.course.id,
       user_id: params.userId,
       canvas_announcement_id: String(params.announcement.id),
       title: sanitizeSyncText(params.announcement.title),
@@ -243,43 +250,74 @@ async function syncAnnouncement(params: {
 async function syncAssignment(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
-  assignment: CanvasAssignment;
+  course: CourseRow;
+  assignment: CanvasAssignmentWithSubmission;
   existing: TaskRow | undefined;
 }) {
   const descriptionText = sanitizeSyncText(stripHtml(params.assignment.description ?? ""));
   const descriptionHash = createContentHash(descriptionText);
   const dueAt = params.assignment.due_at ?? null;
 
-  if (params.existing && params.existing.due_at === dueAt && params.existing.description_hash === descriptionHash) {
-    return { changed: false };
+  const taskPayload = {
+    course_id: params.course.id,
+    user_id: params.userId,
+    title: sanitizeSyncText(params.assignment.name) || "Untitled task",
+    due_at: dueAt,
+    source: "canvas",
+    source_ref_id: String(params.assignment.id),
+    completed: false,
+    description_hash: descriptionHash,
+  };
+
+  const taskUnchanged =
+    params.existing && params.existing.due_at === dueAt && params.existing.description_hash === descriptionHash;
+
+  let taskId = params.existing?.id ?? null;
+
+  if (!taskUnchanged) {
+    const { data, error } = await params.supabase
+      .from("tasks")
+      .upsert(taskPayload, { onConflict: "user_id, source, source_ref_id" })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (error || !data) {
+      throw new Error(`Failed to upsert task: ${error?.message ?? "Unknown error"}`);
+    }
+
+    taskId = data.id;
   }
 
-  const { error } = await params.supabase.from("tasks").upsert(
-    {
-      module_id: params.module.id,
+  // Upsert grade if Canvas returned a submission for this assignment.
+  const submission = params.assignment.submission ?? null;
+  if (submission && taskId) {
+    const gradePayload = {
       user_id: params.userId,
-      title: sanitizeSyncText(params.assignment.name) || "Untitled task",
-      due_at: dueAt,
-      source: "canvas",
-      source_ref_id: String(params.assignment.id),
-      completed: false,
-      description_hash: descriptionHash,
-    },
-    { onConflict: "user_id, source, source_ref_id" },
-  );
+      assignment_id: taskId,
+      score: submission.score ?? null,
+      grade_text: submission.grade ?? null,
+      points_possible: params.assignment.points_possible ?? null,
+      submitted_at: submission.submitted_at ?? null,
+      graded_at: submission.graded_at ?? null,
+      state: submission.workflow_state ?? null,
+    };
 
-  if (error) {
-    throw new Error(`Failed to upsert task: ${error.message}`);
+    const { error: gradeError } = await params.supabase
+      .from("grades")
+      .upsert(gradePayload, { onConflict: "user_id, assignment_id" });
+
+    if (gradeError) {
+      throw new Error(`Failed to upsert grade: ${gradeError.message}`);
+    }
   }
 
-  return { changed: true };
+  return { changed: !taskUnchanged };
 }
 
 async function syncFile(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
+  course: CourseRow;
   file: CanvasFile;
   existing: FileRow | undefined;
 }) {
@@ -305,7 +343,7 @@ async function syncFile(params: {
 
   const { error } = await params.supabase.from("canvas_files").upsert(
     {
-      module_id: params.module.id,
+      course_id: params.course.id,
       user_id: params.userId,
       canvas_file_id: String(params.file.id),
       filename: sanitizeSyncText(params.file.display_name || params.file.filename),
@@ -325,15 +363,230 @@ async function syncFile(params: {
   return { changed: true };
 }
 
-async function processModuleSync(params: {
+function resolveContentRef(item: CanvasModuleItem): string | null {
+  if (item.content_id != null) return String(item.content_id);
+  if (item.page_url) return item.page_url;
+  return null;
+}
+
+async function syncCourseModules(params: {
   supabase: SupabaseClient;
   userId: string;
-  module: ModuleRow;
+  course: CourseRow;
+  send: SyncSender;
+  counts: SyncCounts;
+}) {
+  const moduleCode = params.course.code ?? "MOD";
+
+  let canvasModules: CanvasModule[] = [];
+  try {
+    canvasModules = await getModules(params.course.canvas_course_id);
+  } catch (error) {
+    console.error(`Failed to fetch course modules for ${moduleCode}:`, error);
+    params.send({
+      status: "progress",
+      stage: "module",
+      moduleCode,
+      message: `Canvas modules fetch failed for ${moduleCode}; continuing.`,
+      counts: params.counts,
+    });
+    return;
+  }
+
+  // Upsert each module and collect the DB ids in order.
+  for (const canvasModule of canvasModules) {
+    const { data: moduleData, error: moduleError } = await params.supabase
+      .from("course_modules")
+      .upsert(
+        {
+          user_id: params.userId,
+          course_id: params.course.id,
+          canvas_module_id: String(canvasModule.id),
+          name: canvasModule.name,
+          position: canvasModule.position,
+          unlock_at: canvasModule.unlock_at ?? null,
+          state: canvasModule.state ?? null,
+          items_count: canvasModule.items_count ?? null,
+        },
+        { onConflict: "course_id, canvas_module_id" },
+      )
+      .select("id")
+      .single<{ id: string }>();
+
+    if (moduleError || !moduleData) {
+      console.error(`Failed to upsert course module ${canvasModule.id} in ${moduleCode}:`, moduleError);
+      continue;
+    }
+
+    // Decide whether to trust the inline items or fetch via getModuleItems.
+    let items = canvasModule.items ?? [];
+    const expected = canvasModule.items_count ?? items.length;
+    if (items.length < expected) {
+      try {
+        items = await getModuleItems(params.course.canvas_course_id, canvasModule.id);
+      } catch (error) {
+        console.error(`Failed to fetch items for module ${canvasModule.id} in ${moduleCode}:`, error);
+        continue;
+      }
+    }
+
+    if (items.length === 0) continue;
+
+    const itemRows = items.map((item) => ({
+      user_id: params.userId,
+      course_module_id: moduleData.id,
+      canvas_item_id: String(item.id),
+      title: item.title,
+      item_type: item.type,
+      position: item.position,
+      indent: item.indent,
+      content_ref: resolveContentRef(item),
+      external_url: item.external_url ?? null,
+    }));
+
+    const { error: itemsError } = await params.supabase
+      .from("course_module_items")
+      .upsert(itemRows, { onConflict: "course_module_id, canvas_item_id" });
+
+    if (itemsError) {
+      console.error(`Failed to upsert module items for ${canvasModule.id} in ${moduleCode}:`, itemsError);
+    }
+  }
+}
+
+type PageRow = {
+  id: string;
+  page_url: string | null;
+  updated_at: string | null;
+};
+
+async function syncPages(params: {
+  supabase: SupabaseClient;
+  userId: string;
+  course: CourseRow;
+  send: SyncSender;
+  counts: SyncCounts;
+}) {
+  const moduleCode = params.course.code ?? "MOD";
+
+  let canvasPages: CanvasPage[] = [];
+  try {
+    canvasPages = await getPages(params.course.canvas_course_id);
+  } catch (error) {
+    console.error(`Failed to fetch pages for ${moduleCode}:`, error);
+    params.send({
+      status: "progress",
+      stage: "file",
+      moduleCode,
+      message: `Canvas pages fetch failed for ${moduleCode}; continuing.`,
+      counts: params.counts,
+    });
+    return;
+  }
+
+  // Load existing cached pages for change detection.
+  const { data: existingData, error: existingError } = await params.supabase
+    .from("canvas_pages")
+    .select("id, page_url, updated_at")
+    .eq("course_id", params.course.id);
+
+  if (existingError) {
+    throw new Error(`Failed to load existing pages for ${moduleCode}: ${existingError.message}`);
+  }
+
+  const existingByUrl = new Map(((existingData ?? []) as PageRow[]).map((row) => [String(row.page_url), row]));
+
+  // Step 1: upsert metadata for every Canvas page in one shot.
+  const metadataRows = canvasPages.map((page) => ({
+    user_id: params.userId,
+    course_id: params.course.id,
+    page_url: page.url,
+    title: page.title,
+    updated_at: page.updated_at ?? null,
+    published: page.published ?? true,
+    front_page: page.front_page ?? false,
+  }));
+
+  if (metadataRows.length > 0) {
+    const { error: metaError } = await params.supabase
+      .from("canvas_pages")
+      .upsert(metadataRows, { onConflict: "course_id, page_url" });
+
+    if (metaError) {
+      throw new Error(`Failed to upsert page metadata: ${metaError.message}`);
+    }
+  }
+
+  // Step 2: for each page whose Canvas updated_at is newer than the cached copy,
+  // fetch the body and update that row. Bounded concurrency cap of 5.
+  const stalePages = canvasPages.filter((page) => {
+    const existing = existingByUrl.get(page.url);
+    if (!existing) return true;
+    if (!existing.updated_at) return true;
+    if (!page.updated_at) return false;
+    return new Date(page.updated_at).getTime() > new Date(existing.updated_at).getTime();
+  });
+
+  const CONCURRENCY = 5;
+  let inFlight = 0;
+  let index = 0;
+  await new Promise<void>((resolve, reject) => {
+    const next = () => {
+      if (index >= stalePages.length && inFlight === 0) {
+        resolve();
+        return;
+      }
+      while (inFlight < CONCURRENCY && index < stalePages.length) {
+        const page = stalePages[index];
+        index += 1;
+        inFlight += 1;
+        (async () => {
+          try {
+            const full = await getPage(params.course.canvas_course_id, page.url);
+            if (full) {
+              const { error } = await params.supabase
+                .from("canvas_pages")
+                .update({ body_html: full.body ?? null })
+                .eq("course_id", params.course.id)
+                .eq("page_url", page.url);
+              if (error) throw error;
+              params.send({
+                status: "progress",
+                stage: "file",
+                moduleCode,
+                message: `Updated page: ${page.title}`,
+                counts: params.counts,
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to sync page ${page.url} in ${moduleCode}:`, error);
+            params.send({
+              status: "progress",
+              stage: "file",
+              moduleCode,
+              message: `Skipped page "${page.title}" after a sync error.`,
+              counts: params.counts,
+            });
+          } finally {
+            inFlight -= 1;
+            next();
+          }
+        })().catch(reject);
+      }
+    };
+    next();
+  });
+}
+
+async function processCourseSync(params: {
+  supabase: SupabaseClient;
+  userId: string;
+  course: CourseRow;
   syncFiles: boolean;
   send: SyncSender;
   counts: SyncCounts;
 }) {
-  const moduleCode = params.module.code ?? "MOD";
+  const moduleCode = params.course.code ?? "MOD";
 
   params.send({
     status: "progress",
@@ -344,16 +597,16 @@ async function processModuleSync(params: {
   });
 
   const [existing, announcementsResult, assignmentsResult, filesResult] = await Promise.all([
-    loadExistingState(params.supabase, params.module.id),
-    getAnnouncements(params.module.canvas_course_id).then(
+    loadExistingState(params.supabase, params.course.id),
+    getAnnouncements(params.course.canvas_course_id).then(
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
-    getAssignments(params.module.canvas_course_id).then(
+    getAssignmentsWithSubmissions(params.course.canvas_course_id).then(
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
-    (params.syncFiles ? getFiles(params.module.canvas_course_id) : Promise.resolve([])).then(
+    (params.syncFiles ? getFiles(params.course.canvas_course_id) : Promise.resolve([])).then(
       (value) => ({ ok: true as const, value }),
       (error) => ({ ok: false as const, error }),
     ),
@@ -401,7 +654,7 @@ async function processModuleSync(params: {
       const result = await syncAnnouncement({
         supabase: params.supabase,
         userId: params.userId,
-        module: params.module,
+        course: params.course,
         announcement,
         existing: existing.announcements.get(String(announcement.id)),
       });
@@ -433,7 +686,7 @@ async function processModuleSync(params: {
       const result = await syncAssignment({
         supabase: params.supabase,
         userId: params.userId,
-        module: params.module,
+        course: params.course,
         assignment,
         existing: existing.tasks.get(String(assignment.id)),
       });
@@ -466,7 +719,7 @@ async function processModuleSync(params: {
         const result = await syncFile({
           supabase: params.supabase,
           userId: params.userId,
-          module: params.module,
+          course: params.course,
           file,
           existing: existing.files.get(String(file.id)),
         });
@@ -494,18 +747,34 @@ async function processModuleSync(params: {
     }
   }
 
+  await syncPages({
+    supabase: params.supabase,
+    userId: params.userId,
+    course: params.course,
+    send: params.send,
+    counts: params.counts,
+  });
+
+  await syncCourseModules({
+    supabase: params.supabase,
+    userId: params.userId,
+    course: params.course,
+    send: params.send,
+    counts: params.counts,
+  });
+
   params.counts.modules += 1;
   await params.supabase
-    .from("modules")
+    .from("courses")
     .update({ last_canvas_sync: new Date().toISOString() })
-    .eq("id", params.module.id)
+    .eq("id", params.course.id)
     .eq("user_id", params.userId);
 }
 
 export async function runDiscoverySync(send: SyncSender) {
   const user = await ensureDemoUser();
   const courses = await getCourses();
-  const upsertedModules: ModuleRow[] = [];
+  const upsertedCourses: CourseRow[] = [];
 
   send({
     status: "started",
@@ -514,16 +783,16 @@ export async function runDiscoverySync(send: SyncSender) {
   });
 
   for (const course of courses) {
-    const moduleRow = await upsertModule(user.id, course);
-    upsertedModules.push(moduleRow);
-    void fetchNUSModsModule(moduleRow.code ?? "");
+    const courseRow = await upsertCourse(user.id, course);
+    upsertedCourses.push(courseRow);
+    void fetchNUSModsModule(courseRow.code ?? "");
   }
 
   send({
     status: "complete",
     stage: "discovery",
-    message: `Discovery complete. Found ${upsertedModules.length} modules.`,
-    counts: { modules: upsertedModules.length },
+    message: `Discovery complete. Found ${upsertedCourses.length} modules.`,
+    counts: { modules: upsertedCourses.length },
   });
 }
 
@@ -536,7 +805,7 @@ export async function runSelectedModuleSync(config: SyncConfig, send: SyncSender
   const supabase = getSupabaseAdminClient();
   const counts = createCounts();
   const { data, error } = await supabase
-    .from("modules")
+    .from("courses")
     .select("id, canvas_course_id, code, title, sync_enabled")
     .eq("user_id", user.id)
     .in("id", config.selectedModuleIds)
@@ -546,24 +815,24 @@ export async function runSelectedModuleSync(config: SyncConfig, send: SyncSender
     throw new Error(`Failed to load selected modules: ${error.message}`);
   }
 
-  const modules = ((data ?? []) as ModuleRow[]).filter((moduleRow) => Boolean(moduleRow.canvas_course_id));
+  const courses = ((data ?? []) as CourseRow[]).filter((courseRow) => Boolean(courseRow.canvas_course_id));
 
-  if (modules.length === 0) {
+  if (courses.length === 0) {
     throw new Error("No matching modules found for this sync.");
   }
 
   send({
     status: "started",
     stage: "module",
-    message: `Starting sync for ${modules.length} module${modules.length === 1 ? "" : "s"}...`,
+    message: `Starting sync for ${courses.length} module${courses.length === 1 ? "" : "s"}...`,
     counts,
   });
 
-  for (const moduleRow of modules) {
-    await processModuleSync({
+  for (const courseRow of courses) {
+    await processCourseSync({
       supabase,
       userId: user.id,
-      module: moduleRow,
+      course: courseRow,
       syncFiles: config.syncFiles,
       send,
       counts,
