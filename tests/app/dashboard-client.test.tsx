@@ -278,7 +278,7 @@ describe("DashboardClient", () => {
     rerender(<DashboardClient data={afterSync} />);
 
     expect(await screen.findByText("Computer Security")).toBeInTheDocument();
-    expect(screen.getByText("This week")).toBeInTheDocument();
+    expect(screen.getByText("Due this week")).toBeInTheDocument();
     expect(screen.queryByText("Run sync first.")).not.toBeInTheDocument();
   });
 
@@ -316,10 +316,9 @@ describe("DashboardClient", () => {
     expect(screen.queryByText("Module workspace")).not.toBeInTheDocument();
   });
 
-  it("falls back to module file summaries when the recent files feed is empty", () => {
+  it("shows empty state in new files widget when the recent files feed is empty", () => {
     render(<DashboardClient data={withEmptyRecentFilesFeed} />);
 
-    expect(screen.getAllByText("lecture-01.pdf").length).toBeGreaterThan(0);
-    expect(screen.queryByText("No synced files")).not.toBeInTheDocument();
+    expect(screen.getByText(/No new files this week/i)).toBeInTheDocument();
   });
 });

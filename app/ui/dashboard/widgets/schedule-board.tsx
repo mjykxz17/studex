@@ -1,6 +1,6 @@
 import type { ModuleSummary, WeeklyTask } from "@/lib/contracts";
 
-import { colorForModule, Pill } from "./shared";
+import { colorForModule, Pill } from "../shared";
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
