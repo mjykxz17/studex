@@ -11,7 +11,7 @@ import type {
   ModuleSummary,
   WeeklyTask,
 } from "@/lib/contracts";
-import { fetchNUSModsModule, type NUSModsData, type NUSModsExam } from "@/lib/nusmods";
+import { fetchNUSModsModule, type NUSModsData } from "@/lib/nusmods";
 
 type RelationRecord = { code?: string | null };
 
