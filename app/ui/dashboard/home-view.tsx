@@ -5,9 +5,11 @@ import { useMemo, useState } from "react";
 import type { DashboardData } from "@/lib/contracts";
 import { EmptyState } from "@/app/ui/dashboard/shared";
 import { CourseListWidget } from "./widgets/course-list-widget";
+import { CourseProgressWidget } from "./widgets/course-progress-widget";
 import { DueThisWeekWidget } from "./widgets/due-this-week-widget";
 import { NewFilesWidget } from "./widgets/new-files-widget";
 import { RecentAnnouncementsWidget } from "./widgets/recent-announcements-widget";
+import { RecentGradesWidget } from "./widgets/recent-grades-widget";
 import { ScheduleBoard } from "./widgets/schedule-board";
 import { StatsHeader } from "./widgets/stats-header";
 
@@ -83,7 +85,11 @@ export function HomeView({
           </div>
 
           <div className="space-y-4">
-            {/* CourseProgressWidget and RecentGradesWidget added in Task 4 */}
+            <CourseProgressWidget
+              courses={data.courseProgress.filter((course) => activeModuleCodes.has(course.moduleCode))}
+              onOpenModule={onOpenModule}
+            />
+            <RecentGradesWidget grades={data.recentGrades.filter((grade) => activeModuleCodes.has(grade.moduleCode))} />
             <CourseListWidget modules={activeModules} onOpenModule={onOpenModule} />
           </div>
         </div>
