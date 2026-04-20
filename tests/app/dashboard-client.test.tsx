@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import DashboardClient from "@/app/dashboard-client";
-import type { DashboardData } from "@/lib/dashboard";
+import type { DashboardData } from "@/lib/contracts";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -25,6 +25,8 @@ const beforeSync: DashboardData = {
   announcements: [],
   recentFiles: [],
   latestChanges: [],
+  recentGrades: [],
+  courseProgress: [],
   source: "fallback",
   status: "needs-setup",
   setupMessage: "Run sync first.",
@@ -140,6 +142,8 @@ const afterSync: DashboardData = {
       file: previewFile,
     },
   ],
+  recentGrades: [],
+  courseProgress: [],
   source: "live",
   status: "ready",
   setupMessage: "Studex is rendering live Canvas-backed data from Supabase.",
@@ -274,7 +278,7 @@ describe("DashboardClient", () => {
     rerender(<DashboardClient data={afterSync} />);
 
     expect(await screen.findByText("Computer Security")).toBeInTheDocument();
-    expect(screen.getByText("This week")).toBeInTheDocument();
+    expect(screen.getByText("Due this week")).toBeInTheDocument();
     expect(screen.queryByText("Run sync first.")).not.toBeInTheDocument();
   });
 
@@ -312,10 +316,9 @@ describe("DashboardClient", () => {
     expect(screen.queryByText("Module workspace")).not.toBeInTheDocument();
   });
 
-  it("falls back to module file summaries when the recent files feed is empty", () => {
+  it("shows empty state in new files widget when the recent files feed is empty", () => {
     render(<DashboardClient data={withEmptyRecentFilesFeed} />);
 
-    expect(screen.getAllByText("lecture-01.pdf").length).toBeGreaterThan(0);
-    expect(screen.queryByText("No synced files")).not.toBeInTheDocument();
+    expect(screen.getByText(/No new files this week/i)).toBeInTheDocument();
   });
 });

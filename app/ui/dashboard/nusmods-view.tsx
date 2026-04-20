@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 
-import type { ModuleSummary, WeeklyTask } from "@/lib/dashboard";
+import type { ModuleSummary, WeeklyTask } from "@/lib/contracts";
 
 import { EmptyState, Pill, SectionCard } from "./shared";
-import { ScheduleBoard } from "./schedule-board";
+import { ScheduleBoard } from "./widgets/schedule-board";
 
 export function NUSModsView({
   modules,

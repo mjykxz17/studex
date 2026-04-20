@@ -8,7 +8,7 @@ import { ManageView } from "@/app/ui/dashboard/manage-view";
 import { ModuleView } from "@/app/ui/dashboard/module-view";
 import { ModulesView } from "@/app/ui/dashboard/modules-view";
 import { NUSModsView } from "@/app/ui/dashboard/nusmods-view";
-import type { DashboardData } from "@/lib/dashboard";
+import type { DashboardData } from "@/lib/contracts";
 
 type RootView = "home" | "modules" | "nusmods" | "manage";
 

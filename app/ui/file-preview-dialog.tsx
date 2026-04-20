@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { CanvasFileSummary } from "@/lib/dashboard";
+import type { CanvasFileSummary } from "@/lib/contracts";
 
 import { useBodyScrollLock, useEscapeToClose } from "./use-modal-behavior";
 

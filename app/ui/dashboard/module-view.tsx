@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 
-import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/dashboard";
+import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/contracts";
 
-import { FileCard } from "./file-card";
+import { FileCard } from "./widgets/file-card";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
 
 type ModuleTab = "overview" | "files" | "nusmods";
