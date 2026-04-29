@@ -44,3 +44,6 @@ next-env.d.ts
 # playwright scratch artifacts
 /.playwright-cli/
 /output/
+
+# superpowers brainstorming session artifacts
+/.superpowers/
