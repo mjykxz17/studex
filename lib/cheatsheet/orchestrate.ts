@@ -95,9 +95,12 @@ export async function runOrchestrator(
   const pipeline: Pipeline = { ...defaultPipeline, ...params.pipeline } as Pipeline;
   const { emit } = params;
 
+  let currentStage: CheatsheetStage = "ingest";
+  let currentStageStart = new Date().toISOString();
+
   try {
     // Stage 1: Ingest
-    const ingestStart = new Date().toISOString();
+    const ingestStart = currentStageStart;
     emit({
       type: "stage-start",
       stage: "ingest",
@@ -143,7 +146,9 @@ export async function runOrchestrator(
     });
 
     // Stage 2: Detect gaps
-    const gapsStart = new Date().toISOString();
+    currentStage = "detect-gaps";
+    currentStageStart = new Date().toISOString();
+    const gapsStart = currentStageStart;
     emit({ type: "stage-start", stage: "detect-gaps", message: "Identifying gap concepts…" });
     const sourceMarkdown = usable.map((f) => `## ${f.name}\n${f.markdown}`).join("\n\n");
     const gaps = await pipeline.detectGaps({ sourceMarkdown, client: params.anthropic });
@@ -166,7 +171,9 @@ export async function runOrchestrator(
     });
 
     // Stage 3: Web search
-    const searchStart = new Date().toISOString();
+    currentStage = "web-search";
+    currentStageStart = new Date().toISOString();
+    const searchStart = currentStageStart;
     emit({
       type: "stage-start",
       stage: "web-search",
@@ -197,7 +204,9 @@ export async function runOrchestrator(
     });
 
     // Stage 4: Synthesize
-    const synthStart = new Date().toISOString();
+    currentStage = "synthesize";
+    currentStageStart = new Date().toISOString();
+    const synthStart = currentStageStart;
     emit({ type: "stage-start", stage: "synthesize", message: "Writing cheatsheet…" });
     const synth = await pipeline.synthesize({
       files: usable,
@@ -227,6 +236,14 @@ export async function runOrchestrator(
   } catch (err) {
     const reason = err instanceof Error ? err.message : "Unknown error";
     emit({ type: "failed", reason });
+    // Audit the failing stage so we have a debuggable run row.
+    await pipeline.recordRun({
+      cheatsheetId: params.cheatsheetId,
+      stage: currentStage,
+      startedAt: currentStageStart,
+      completedAt: new Date().toISOString(),
+      error: reason,
+    });
     await pipeline.persist({
       cheatsheetId: params.cheatsheetId,
       markdown: "",

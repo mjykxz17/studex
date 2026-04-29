@@ -6,11 +6,12 @@ import type { IngestedFile, SearchResult } from "@/lib/cheatsheet/types";
 describe("synthesizeCheatsheet", () => {
   it("streams chunks and returns final markdown + citations", async () => {
     async function* fakeStream() {
+      yield { type: "message_start", message: { usage: { input_tokens: 200, output_tokens: 0 } } };
       yield { type: "content_block_delta", delta: { type: "text_delta", text: "# Streams\n" } };
       yield { type: "content_block_delta", delta: { type: "text_delta", text: "See [1]." } };
       yield {
         type: "message_delta",
-        usage: { input_tokens: 200, output_tokens: 50 },
+        usage: { output_tokens: 50 },
       };
     }
     const fakeClient = {
@@ -53,8 +54,9 @@ describe("synthesizeCheatsheet", () => {
 
   it("excludes failed search results from citations", async () => {
     async function* fakeStream() {
+      yield { type: "message_start", message: { usage: { input_tokens: 1, output_tokens: 0 } } };
       yield { type: "content_block_delta", delta: { type: "text_delta", text: "ok" } };
-      yield { type: "message_delta", usage: { input_tokens: 1, output_tokens: 1 } };
+      yield { type: "message_delta", usage: { output_tokens: 1 } };
     }
     const fakeClient = {
       messages: {
@@ -90,8 +92,9 @@ describe("synthesizeCheatsheet", () => {
 
   it("skips ingested files marked as skipped", async () => {
     async function* fakeStream() {
+      yield { type: "message_start", message: { usage: { input_tokens: 1, output_tokens: 0 } } };
       yield { type: "content_block_delta", delta: { type: "text_delta", text: "x" } };
-      yield { type: "message_delta", usage: { input_tokens: 1, output_tokens: 1 } };
+      yield { type: "message_delta", usage: { output_tokens: 1 } };
     }
     const stream = vi.fn().mockReturnValue({
       [Symbol.asyncIterator]: () => fakeStream(),

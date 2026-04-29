@@ -4,8 +4,9 @@ vi.mock("@/lib/demo-user", () => ({
   ensureDemoUser: async () => ({ id: "u1" }),
 }));
 
+const getAnthropicClientMock = vi.fn(() => ({}) as never);
 vi.mock("@/lib/llm/anthropic", () => ({
-  getAnthropicClient: () => ({}) as never,
+  getAnthropicClient: () => getAnthropicClientMock(),
   HAIKU_MODEL: "h",
   SONNET_MODEL: "s",
 }));
@@ -86,5 +87,20 @@ describe("POST /api/cheatsheets/generate", () => {
     const text = await res.text();
     expect(text).toContain("stage-start");
     expect(text).toContain("complete");
+  });
+
+  it("400s when Anthropic key is missing (no orphaned row)", async () => {
+    getAnthropicClientMock.mockImplementationOnce(() => {
+      throw new Error("Missing required environment variable: ANTHROPIC_API_KEY");
+    });
+    const req = new Request("http://localhost/api/cheatsheets/generate", {
+      method: "POST",
+      body: JSON.stringify({ course_id: "c1", source_file_ids: ["f1"] }),
+      headers: { "content-type": "application/json" },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/ANTHROPIC_API_KEY/);
   });
 });

@@ -96,6 +96,7 @@ export async function synthesizeCheatsheet(
 
   for await (const event of stream as unknown as AsyncIterable<{
     type: string;
+    message?: { usage?: { input_tokens?: number; output_tokens?: number } };
     delta?: { type?: string; text?: string };
     usage?: { input_tokens?: number; output_tokens?: number };
   }>) {
@@ -106,8 +107,9 @@ export async function synthesizeCheatsheet(
     ) {
       markdown += event.delta.text;
       params.onChunk?.(event.delta.text);
+    } else if (event.type === "message_start" && event.message?.usage) {
+      tokensIn = event.message.usage.input_tokens ?? tokensIn;
     } else if (event.type === "message_delta" && event.usage) {
-      tokensIn = event.usage.input_tokens ?? tokensIn;
       tokensOut = event.usage.output_tokens ?? tokensOut;
     }
   }

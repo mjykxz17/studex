@@ -52,6 +52,21 @@ export async function POST(req: Request): Promise<Response> {
     })}`;
   }
 
+  let anthropic;
+  try {
+    anthropic = getAnthropicClient();
+  } catch (err) {
+    return Response.json(
+      {
+        error:
+          err instanceof Error
+            ? err.message
+            : "Anthropic client unavailable",
+      },
+      { status: 400 },
+    );
+  }
+
   const { data: created, error } = await supabase
     .from("cheatsheets")
     .insert({
@@ -70,8 +85,6 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
   const cheatsheetId = (created as { id: string }).id;
-
-  const anthropic = getAnthropicClient();
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({

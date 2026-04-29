@@ -95,6 +95,7 @@ describe("runOrchestrator (degraded paths)", () => {
   it("fails the run when synthesis throws", async () => {
     const events: StreamEvent[] = [];
     const persist = vi.fn().mockResolvedValue(undefined);
+    const recordRun = vi.fn().mockResolvedValue(undefined);
     const result = await runOrchestrator({
       cheatsheetId: "cs-3",
       userId: "u1",
@@ -109,13 +110,16 @@ describe("runOrchestrator (degraded paths)", () => {
           throw new Error("rate-limited");
         },
         persist,
-        recordRun: vi.fn().mockResolvedValue(undefined),
+        recordRun,
       },
     });
     expect(result.status).toBe("failed");
     expect(events.some((e) => e.type === "failed")).toBe(true);
     expect(persist).toHaveBeenCalledWith(
       expect.objectContaining({ status: "failed", failureReason: "rate-limited" }),
+    );
+    expect(recordRun).toHaveBeenCalledWith(
+      expect.objectContaining({ stage: "synthesize", error: "rate-limited" }),
     );
   });
 
