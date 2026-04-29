@@ -6,8 +6,9 @@ import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/contr
 
 import { FileCard } from "./widgets/file-card";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
+import { CheatsheetPanel } from "@/app/ui/cheatsheet/cheatsheet-panel";
 
-type ModuleTab = "overview" | "files" | "nusmods";
+type ModuleTab = "overview" | "files" | "nusmods" | "cheatsheets";
 
 export function ModuleView({
   module,
@@ -34,6 +35,10 @@ export function ModuleView({
     nusmods: {
       tab: `module-tab-nusmods-${module.id}`,
       panel: `module-panel-nusmods-${module.id}`,
+    },
+    cheatsheets: {
+      tab: `module-tab-cheatsheets-${module.id}`,
+      panel: `module-panel-cheatsheets-${module.id}`,
     },
   } as const;
 
@@ -87,6 +92,7 @@ export function ModuleView({
             ["overview", "Overview"],
             ["files", "Files"],
             ["nusmods", "NUSMods"],
+            ["cheatsheets", "Cheatsheets"],
           ].map(([key, label]) => {
             const active = tab === key;
 
@@ -187,6 +193,20 @@ export function ModuleView({
       {tab === "nusmods" ? (
         <div id={tabIds.nusmods.panel} role="tabpanel" aria-labelledby={tabIds.nusmods.tab}>
           <CompactNUSMods module={module} expanded={true} />
+        </div>
+      ) : null}
+
+      {tab === "cheatsheets" ? (
+        <div id={tabIds.cheatsheets.panel} role="tabpanel" aria-labelledby={tabIds.cheatsheets.tab}>
+          <CheatsheetPanel
+            courseId={module.id}
+            files={module.files.map((f) => ({
+              id: f.id,
+              filename: f.name,
+              week_number: null,
+              uploaded_at: f.uploadedAt ?? null,
+            }))}
+          />
         </div>
       ) : null}
     </div>
