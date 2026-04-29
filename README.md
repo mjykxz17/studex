@@ -33,6 +33,8 @@ CANVAS_BASE_URL=https://canvas.nus.edu.sg
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_key
+ANTHROPIC_API_KEY=your_anthropic_key   # Bring-your-own; powers cheatsheet generation
+TAVILY_API_KEY=your_tavily_key         # App-paid; powers gap-fill web search
 ```
 
 ### 3. Database Setup

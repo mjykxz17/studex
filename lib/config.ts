@@ -11,6 +11,8 @@ const CONFIG_KEYS = [
   { key: "SUPABASE_SERVICE_KEY", required: true, description: "Supabase service role key" },
   { key: "CANVAS_TOKEN", required: true, description: "Canvas API token" },
   { key: "CANVAS_BASE_URL", required: false, description: "Canvas base URL" },
+  { key: "ANTHROPIC_API_KEY", required: false, description: "Anthropic API key (BYOK; powers cheatsheet generation)" },
+  { key: "TAVILY_API_KEY", required: false, description: "Tavily search API key (powers cheatsheet gap-fill)" },
 ] as const;
 
 export function readEnv(name: string): string | undefined {

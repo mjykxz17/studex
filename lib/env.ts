@@ -10,4 +10,10 @@ export const env = {
   get supabaseServiceKey() {
     return requireEnv("SUPABASE_SERVICE_KEY");
   },
+  get anthropicApiKey() {
+    return requireEnv("ANTHROPIC_API_KEY");
+  },
+  get tavilyApiKey() {
+    return requireEnv("TAVILY_API_KEY");
+  },
 } as const;
