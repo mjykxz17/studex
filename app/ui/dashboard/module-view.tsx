@@ -8,6 +8,7 @@ import { FileCard } from "./widgets/file-card";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
 import { CheatsheetPanel } from "@/app/ui/cheatsheet/cheatsheet-panel";
 import { AnnouncementDetailDialog } from "@/app/ui/announcement-detail-dialog";
+import { AssignmentDetailDialog } from "@/app/ui/assignment-detail-dialog";
 
 type ModuleTab = "overview" | "files" | "nusmods" | "cheatsheets";
 
@@ -138,12 +139,17 @@ export function ModuleView({
               ) : (
                 <div className="space-y-2">
                   {tasks.map((task) => (
-                    <div key={task.id} className="rounded-[10px] border border-stone-200 bg-[#fcfbf9] px-3 py-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Pill tone={task.status === "due-soon" ? "rose" : "slate"}>{task.dueLabel}</Pill>
-                        <Pill>{task.source}</Pill>
+                    <div key={task.id} className="flex items-start justify-between gap-2 rounded-[10px] border border-stone-200 bg-[#fcfbf9] px-3 py-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Pill tone={task.status === "due-soon" ? "rose" : "slate"}>{task.dueLabel}</Pill>
+                          <Pill>{task.source}</Pill>
+                        </div>
+                        <p className="mt-2 text-[13px] font-medium text-stone-900">{task.title}</p>
                       </div>
-                      <p className="mt-2 text-[13px] font-medium text-stone-900">{task.title}</p>
+                      {task.hasDescription ? (
+                        <AssignmentDetailDialog taskId={task.id} title={task.title} moduleCode={module.code} />
+                      ) : null}
                     </div>
                   ))}
                 </div>
