@@ -10,7 +10,7 @@ import type {
   WeeklyTask,
 } from "@/lib/contracts";
 
-import { panoptoEmbedUrl } from "@/lib/canvas-url";
+import { isZoomUrl, panoptoEmbedUrl, parseZoomPasscode } from "@/lib/canvas-url";
 import { useBodyScrollLock, useEscapeToClose } from "@/app/ui/use-modal-behavior";
 import { AssignmentDetailDialog } from "@/app/ui/assignment-detail-dialog";
 import { FilePreviewDialog } from "@/app/ui/file-preview-dialog";
@@ -139,17 +139,21 @@ export function ModuleTree({ moduleCode, courseModules, pages, files, tasks }: P
                     </li>
                   );
                 }
+                const zoomPasscode = isZoomUrl(it.externalUrl) ? parseZoomPasscode(it.title) : null;
                 return (
                   <li key={it.id} className={baseClass} style={{ paddingLeft: indentPx }}>
                     <span className={titleClass}>{it.title}</span>
-                    <a
-                      href={it.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-[8px] border border-stone-200 bg-white px-3 py-2 text-[11px] font-medium text-stone-700"
-                    >
-                      Open link
-                    </a>
+                    <div className="flex items-center gap-2">
+                      {zoomPasscode ? <CopyPasscodeButton passcode={zoomPasscode} /> : null}
+                      <a
+                        href={it.externalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-[8px] border border-stone-200 bg-white px-3 py-2 text-[11px] font-medium text-stone-700"
+                      >
+                        Open link
+                      </a>
+                    </div>
                   </li>
                 );
               }
@@ -165,6 +169,29 @@ export function ModuleTree({ moduleCode, courseModules, pages, files, tasks }: P
         </section>
       ))}
     </div>
+  );
+}
+
+function CopyPasscodeButton({ passcode }: { passcode: string }) {
+  const [copied, setCopied] = useState(false);
+  const onClick = async () => {
+    try {
+      await navigator.clipboard.writeText(passcode);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API can fail in insecure contexts; silently no-op.
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`Copy passcode: ${passcode}`}
+      className="rounded-[8px] border border-stone-200 bg-white px-3 py-2 text-[11px] font-medium text-stone-700"
+    >
+      {copied ? "Copied" : "Copy passcode"}
+    </button>
   );
 }
 
