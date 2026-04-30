@@ -86,7 +86,10 @@ export function ProgressView() {
           <BucketCard key={b.id} bucket={b} />
         ))}
       </div>
-      <ModuleTakingsEditor onChange={refetchAudit} />
+      <ModuleTakingsEditor
+        onChange={refetchAudit}
+        buckets={audit.buckets.map((b) => ({ id: b.id, name: b.name }))}
+      />
     </div>
   );
 }

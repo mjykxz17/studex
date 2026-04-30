@@ -19,6 +19,7 @@ type SearchResult = {
 
 type Props = {
   onChange: () => void;
+  buckets: Array<{ id: string; name: string }>;
 };
 
 const STATUSES: Array<{ value: Taking["status"]; label: string }> = [
@@ -28,7 +29,7 @@ const STATUSES: Array<{ value: Taking["status"]; label: string }> = [
   { value: "dropped", label: "Dropped" },
 ];
 
-export function ModuleTakingsEditor({ onChange }: Props) {
+export function ModuleTakingsEditor({ onChange, buckets }: Props) {
   const [takings, setTakings] = useState<Taking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -148,6 +149,21 @@ export function ModuleTakingsEditor({ onChange }: Props) {
                   {STATUSES.map((s) => (
                     <option key={s.value} value={s.value}>
                       {s.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={t.bucket_override ?? ""}
+                  onChange={(e) =>
+                    updateTaking(t, { bucket_override: e.target.value || null })
+                  }
+                  title="Override which bucket this module counts toward"
+                  className="rounded-[6px] border border-stone-200 bg-white px-2 py-1 text-[11px]"
+                >
+                  <option value="">Auto-assign</option>
+                  {buckets.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      → {b.name}
                     </option>
                   ))}
                 </select>
