@@ -17,6 +17,7 @@ create table courses (
   title text,
   last_canvas_sync timestamptz,
   sync_enabled bool default true,
+  panopto_tab_url text,
   unique (user_id, canvas_course_id)
 );
 
