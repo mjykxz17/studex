@@ -7,6 +7,7 @@ import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/contr
 import { FileCard } from "./widgets/file-card";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
 import { CheatsheetPanel } from "@/app/ui/cheatsheet/cheatsheet-panel";
+import { AnnouncementDetailDialog } from "@/app/ui/announcement-detail-dialog";
 
 type ModuleTab = "overview" | "files" | "nusmods" | "cheatsheets";
 
@@ -156,8 +157,9 @@ export function ModuleView({
                 <div className="space-y-2">
                   {announcements.map((announcement) => (
                     <div key={announcement.id} className="rounded-[10px] border border-stone-200 bg-[#fcfbf9] px-3 py-3">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center justify-between gap-2">
                         <Pill tone={announcement.importance === "high" ? "rose" : "slate"}>{announcement.postedLabel}</Pill>
+                        <AnnouncementDetailDialog announcement={announcement} />
                       </div>
                       <p className="mt-2 text-[13px] font-medium text-stone-900">{announcement.title}</p>
                       <p className="mt-2 whitespace-pre-line text-[12px] leading-5 text-stone-600">{announcement.summary}</p>
