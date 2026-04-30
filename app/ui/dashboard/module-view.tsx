@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/contracts";
 
 import { FileCard } from "./widgets/file-card";
+import { ModuleTree } from "./widgets/module-tree";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
 import { CheatsheetPanel } from "@/app/ui/cheatsheet/cheatsheet-panel";
 import { AnnouncementDetailDialog } from "@/app/ui/announcement-detail-dialog";
@@ -126,6 +127,20 @@ export function ModuleView({
           className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]"
         >
           <div className="space-y-4">
+            <SectionCard
+              title="Module structure"
+              eyebrow="Canvas content"
+              action={<Pill>{module.courseModules.length} modules</Pill>}
+            >
+              <ModuleTree
+                moduleCode={module.code}
+                courseModules={module.courseModules}
+                pages={module.pages}
+                files={module.files}
+                tasks={tasks}
+              />
+            </SectionCard>
+
             <SectionCard title="This week" eyebrow="Latest context">
               <div className="grid gap-3 md:grid-cols-2">
                 <ContextCard label="Latest update" title={module.latestAnnouncement?.title ?? "No announcement yet"} body={module.latestAnnouncement?.summary ?? "No announcement has been synced for this module yet."} />
