@@ -65,13 +65,41 @@ export function EmptyState({ title, copy }: { title: string; copy: string }) {
   );
 }
 
-export function Pill({ children, tone = "slate" }: PropsWithChildren<{ tone?: "slate" | "blue" | "emerald" | "rose" }>) {
-  const tones = {
-    slate: "bg-stone-100 text-stone-700 border border-stone-200",
-    blue: "bg-blue-50 text-blue-800 border border-blue-100",
-    emerald: "bg-emerald-50 text-emerald-800 border border-emerald-100",
-    rose: "bg-rose-50 text-rose-800 border border-rose-100",
-  } as const;
+type PillTone =
+  | "neutral"
+  | "accent"
+  | "success"
+  | "warn"
+  | "danger"
+  // legacy aliases (kept for non-migrated call sites)
+  | "blue"
+  | "rose"
+  | "slate";
 
-  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${tones[tone]}`}>{children}</span>;
+const PILL_TONE_CLASSES: Record<PillTone, string> = {
+  neutral: "bg-[var(--color-bg-secondary)] text-[var(--color-fg-primary)]",
+  accent: "bg-[var(--color-bg-secondary)] text-[var(--color-accent)]",
+  success: "bg-[var(--color-bg-secondary)] text-[var(--color-success)]",
+  warn: "bg-[var(--color-bg-secondary)] text-[var(--color-warn)]",
+  danger: "bg-[var(--color-bg-secondary)] text-[var(--color-danger)]",
+  // legacy aliases
+  blue: "bg-[var(--color-bg-secondary)] text-[var(--color-accent)]",
+  rose: "bg-[var(--color-bg-secondary)] text-[var(--color-danger)]",
+  slate: "bg-[var(--color-bg-secondary)] text-[var(--color-fg-primary)]",
+};
+
+export function Pill({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: PillTone;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${PILL_TONE_CLASSES[tone]}`}
+    >
+      {children}
+    </span>
+  );
 }
