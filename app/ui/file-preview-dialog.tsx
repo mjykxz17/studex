@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { CanvasFileSummary } from "@/lib/contracts";
@@ -21,6 +21,30 @@ export function FilePreviewDialog({
   buttonLabel = "Preview",
 }: FilePreviewDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  const [docxState, setDocxState] = useState<
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "ready"; html: string }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  const isDocx = file.name.toLowerCase().endsWith(".docx");
+
+  useEffect(() => {
+    if (!isOpen || !isDocx || docxState.kind !== "idle") return;
+    setDocxState({ kind: "loading" });
+    fetch(`/api/files/${file.id}/docx`)
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) {
+          setDocxState({ kind: "error", message: json.error ?? "Failed to render DOCX" });
+          return;
+        }
+        setDocxState({ kind: "ready", html: json.html });
+      })
+      .catch((err) => setDocxState({ kind: "error", message: err instanceof Error ? err.message : "Failed" }));
+  }, [isOpen, isDocx, file.id, docxState.kind]);
 
   const previewUrl = `/api/files/${file.id}/preview`;
   const extractedPreview = file.extractedText?.slice(0, 20_000).trim() ?? "";
@@ -115,6 +139,16 @@ export function FilePreviewDialog({
                         <div className="h-full overflow-auto p-5">
                           <pre className="whitespace-pre-wrap break-words font-mono text-sm leading-6 text-stone-700">{extractedPreview}</pre>
                         </div>
+                      ) : isDocx ? (
+                        docxState.kind === "loading" ? (
+                          <div className="p-5 text-sm text-stone-500">Rendering DOCX…</div>
+                        ) : docxState.kind === "ready" ? (
+                          <div className="h-full overflow-auto p-6">
+                            <div className="prose prose-stone max-w-none" dangerouslySetInnerHTML={{ __html: docxState.html }} />
+                          </div>
+                        ) : docxState.kind === "error" ? (
+                          <div className="p-5 text-sm text-rose-700">DOCX render failed: {docxState.message}</div>
+                        ) : null
                       ) : file.previewKind === "office" && extractedPreview ? (
                         <div className="h-full overflow-auto p-5">
                           <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400">Extracted text fallback</p>
