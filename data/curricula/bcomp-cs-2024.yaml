@@ -1,0 +1,114 @@
+id: bcomp-cs-2024
+name: "Bachelor of Computing in Computer Science"
+matriculation_year: 2024
+total_mc: 160
+source_url: "https://www.comp.nus.edu.sg/programmes/ug/cs/curr/"
+source_fetched_at: "2026-05-01"
+
+buckets:
+  # --- Common Curriculum (40 MC) ---
+  - id: cc-digital-literacy
+    name: "Digital Literacy"
+    mc: 4
+    rule:
+      kind: all_of
+      modules: ["CS1101S"]
+
+  - id: cc-critique-expression
+    name: "Critique and Expression"
+    mc: 4
+    notes: "BComp(CS) requires ES2660 specifically (unlike InfoSec which accepts GEX%)."
+    rule:
+      kind: all_of
+      modules: ["ES2660"]
+
+  - id: cc-cultures-connections
+    name: "Cultures and Connections"
+    mc: 4
+    rule:
+      kind: wildcard
+      pattern: "GEC%"
+
+  - id: cc-data-literacy
+    name: "Data Literacy"
+    mc: 4
+    rule:
+      kind: choose_n
+      n: 1
+      modules: ["GEA1000", "BT1101", "ST1131", "DSA1101"]
+
+  - id: cc-singapore-studies
+    name: "Singapore Studies"
+    mc: 4
+    rule:
+      kind: wildcard
+      pattern: "GES%"
+
+  - id: cc-communities-engagement
+    name: "Communities and Engagement"
+    mc: 4
+    rule:
+      kind: wildcard
+      pattern: "GEN%"
+
+  - id: cc-computing-ethics
+    name: "Computing Ethics"
+    mc: 4
+    rule:
+      kind: all_of
+      modules: ["IS1108"]
+
+  - id: cc-id-cd
+    name: "Interdisciplinary & Cross-Disciplinary Education"
+    mc: 12
+    notes: "Min 2 ID courses; max 1 CD course (Phase A: not auto-validated)"
+    rule:
+      kind: open
+
+  # --- Computer Science Foundation (36 MC) ---
+  - id: foundation
+    name: "Computer Science Foundation"
+    mc: 36
+    notes: "CS uses the CS2030S/CS2040S (functional/rigorous) track. CS3230 + CS2109S are also required, distinguishing CS from sister programs."
+    rule:
+      kind: all_of
+      modules:
+        - "CS1231S"
+        - "CS2030S"
+        - "CS2040S"
+        - "CS2100"
+        - "CS2101"
+        - "CS2103T"
+        - "CS2106"
+        - "CS2109S"
+        - "CS3230"
+
+  # --- CS Breadth & Depth (32 MC) ---
+  - id: breadth-depth
+    name: "CS Breadth & Depth"
+    mc: 32
+    notes: |
+      Counts CS/IFS/CP-coded courses. Must satisfy ≥1 Focus Area (3 primaries
+      with ≥1 at L4000+); ≥12 MC at L4000+; 6–12 MC industrial experience.
+      Phase A enforces only the prefix; the focus-area / level-min / IE rules
+      are not auto-validated yet.
+    rule:
+      kind: open
+      constraints:
+        prefix: ["CS", "IFS", "CP"]
+
+  # --- Mathematics (12 MC) ---
+  - id: math
+    name: "Mathematics"
+    mc: 12
+    rule:
+      kind: all_of
+      modules: ["MA1521", "MA1522", "ST2334"]
+
+  # --- Unrestricted Electives (40 MC) ---
+  - id: ue
+    name: "Unrestricted Electives"
+    mc: 40
+    notes: "Any modules; without A-level/H2 math, MA1301/X required as part of UE"
+    rule:
+      kind: open

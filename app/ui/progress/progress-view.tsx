@@ -6,6 +6,7 @@ import type { AuditResult } from "@/lib/curriculum/types";
 
 import { BucketCard } from "./bucket-card";
 import { ModuleTakingsEditor } from "./module-takings-editor";
+import { ProgramSelector } from "./program-selector";
 
 type LoadState =
   | { kind: "idle" }
@@ -55,7 +56,10 @@ export function ProgressView() {
   return (
     <div className="space-y-4">
       <section className="rounded-[12px] border border-stone-200 bg-white px-5 py-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">Progress</p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">Progress</p>
+          <ProgramSelector onChange={refetchAudit} />
+        </div>
         <h2 className="mt-2 font-[var(--font-lora)] text-[24px] font-medium tracking-[-0.02em] text-stone-950">
           {audit.programName}
         </h2>
