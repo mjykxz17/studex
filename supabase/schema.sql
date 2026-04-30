@@ -169,3 +169,47 @@ create table web_search_usage (
   count int not null default 0,
   primary key (user_id, date)
 );
+
+-- Phase A: NUSMods catalog cache. Lazily populated by lib/nus-catalog.ts.
+create table if not exists nus_modules (
+  code text primary key,
+  title text not null,
+  mc numeric(4,1) not null default 0,
+  module_credit_text text,
+  level int,
+  prefix text,
+  faculty text,
+  department text,
+  description text,
+  prereq_tree jsonb,
+  semesters int[],
+  fetched_at timestamptz default now()
+);
+
+create index if not exists nus_modules_prefix_level_idx on nus_modules (prefix, level);
+
+-- Phase A: per-user module history that powers the degree audit.
+create table if not exists module_takings (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references users(id),
+  module_code text not null,
+  status text not null check (status in ('completed', 'in_progress', 'planning', 'dropped')),
+  semester text,
+  grade text,
+  bucket_override text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (user_id, module_code)
+);
+
+-- Phase A: user's program selection. Multi-program-ready; only is_primary=true
+-- is used today.
+create table if not exists user_programs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references users(id),
+  program_id text not null,
+  matriculation_year int,
+  is_primary bool default true,
+  created_at timestamptz default now(),
+  unique (user_id, program_id)
+);
