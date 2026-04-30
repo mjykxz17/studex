@@ -22,7 +22,7 @@ function collectReferencedCodes(spec: Awaited<ReturnType<typeof loadProgramSpec>
   return codes;
 }
 
-export async function GET(_request: Request) {
+export async function GET() {
   const user = await ensureDemoUser();
   const supabase = getSupabaseAdminClient();
 

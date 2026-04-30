@@ -5,7 +5,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 const VALID_STATUSES = new Set(["completed", "in_progress", "planning", "dropped"]);
 
-export async function GET(_request: Request) {
+export async function GET() {
   const user = await ensureDemoUser();
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
