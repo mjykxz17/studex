@@ -14,20 +14,26 @@
 ---
 
 ## 2026-05-01 · UI overhaul — Apple-style polish + interaction redesign
-**Status:** Planned (brainstorming scope)
+**Status:** Spec written, awaiting plan
+**Spec:** `docs/superpowers/specs/2026-05-01-ui-design-system-phase-1-design.md`
 **Why:** User feedback: "I want the UI to be more flexible for user, it should be optimized for what I want to show, buttons should be at intuitive places. I want the transition or anything to follow the apple.com style."
-**Bundled concerns to scope:**
-1. Information density / layout flexibility
-2. Information hierarchy ("optimized for what I want to show")
-3. Button placement / affordance ("intuitive places")
-4. Visual + motion language (Apple aesthetic)
-**Scope decisions pending:**
-- Which surface(s) first? (Home dashboard / Module view / NUSMods Progress tab / Dialogs / All)
-- Customisation depth — drag-to-rearrange widgets, or fixed-but-better-designed?
-- Motion library — `motion` (framer-motion successor, ~30KB) vs hand-rolled CSS transitions?
-- Typography — go heavier on existing Lora serif, or import SF Pro analogue?
-- Theme — keep stone palette or shift to true Apple grays + restraint?
-**No commits yet — need user direction on scope before any code.**
+
+**Scope decisions made (brainstormed 2026-05-01):**
+- **Surface first:** Approach E → Approach 1 — design-system foundation + prove on **Progress tab only**; other surfaces migrate in follow-up plans
+- **Apple style depth:** Calmly polished (option B) — iCloud / Reminders / Notes web app aesthetic, not theatrical apple.com marketing-page motion
+- **Typography + colour:** Option A — Full Apple SF (system-font, true cool grays #1d1d1f / #6e6e73 / #86868b / #f5f5f7, blue accent #0071e3, drop Lora for this surface)
+- **"Flexible" definition:** B + D — global Density toggle (compact/comfortable/spacious) + smart responsiveness; A (drag-rearrange) and C (per-section collapse) deferred
+- **Motion:** Hand-rolled CSS only this phase; no `motion` npm dep; honour `prefers-reduced-motion`
+- **Token system:** 3-layer CSS variables in `app/tokens.css` (primitives → semantic → density); Tailwind extends to expose semantic tokens as utilities
+
+**Scope (Phase 1 only):**
+- New: `app/tokens.css`, primitives `Button` / `Card` / `Input` / `DensitySelector` / `Container`
+- Modified: `Pill` extended in place; `progress-view.tsx`, `bucket-card.tsx`, `module-takings-editor.tsx`, `program-selector.tsx`
+- Interaction refinements on Progress tab: hover-revealed `•••` menu for bucket-override + Remove; primary `Add to plan` button paired with search; density + program selectors right-aligned in header
+- ~12 new primitive unit tests; 13-step manual smoke checklist
+- ~10–12 hours
+
+**Deferred to follow-up phases:** dialog primitive, tabs primitive, dark mode, motion library, all other surfaces (home / module view / cheatsheet / dialogs / NUSMods Current sem), drag-rearrange, per-section collapse
 
 ---
 
