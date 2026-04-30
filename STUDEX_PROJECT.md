@@ -482,6 +482,115 @@ When user count exceeds ~100, the single-loop cron will timeout. Switch to batch
 
 ---
 
+## PHASE 4 — MULTI-SCHOOL & MULTI-LMS EXPANSION
+**Status: NOT STARTED — do not begin until Phase 3 has been stable with NUS users for 4–6 weeks**
+**Estimated time: 8–14 weeks**
+**Done when:** A student from any supported institution can sign up, the system auto-detects their school by email domain, routes them to the correct LMS adapter, and they see their own modules — without Aiden touching any code.
+
+### Strategic context
+- This phase is what turns Studex from "NUS Canvas dashboard" into a fundable category-scale product.
+- **Do not start this if Phase 3 has not produced ≥500 weekly-active NUS users.** Premature expansion before product-market fit at NUS just dilutes focus.
+- The 15-year-old apprentice is the natural owner of the Google Classroom adapter (see Step 5) — scoped, reviewable, and testable on their own school's data.
+
+### Adapter priority order (US-focused)
+
+| Order | Platform | Market | Build effort | Why |
+|---|---|---|---|---|
+| 1 | **Canvas** ✅ | ~40% US HE; ~80% of selective/top universities by enrolment | Done | Already built for NUS — extend to other Canvas tenants first |
+| 2 | **Google Classroom** | ~60%+ US K-12; growing in HE | ~1–2 weeks | Easiest API (Google OAuth); kid-led; unlocks K-12 viral path |
+| 3 | **Blackboard Learn** (Anthology) | ~25–30% US HE; dominant at large state systems | ~3–4 weeks | Biggest remaining HE chunk; per-tenant OAuth required |
+| Skip for now | D2L Brightspace, Schoology, Moodle | Low coverage-per-eng-week ratio | — | Only build when an inbound customer asks |
+
+### Pre-flight (do this BEFORE writing any adapter code)
+
+**Step 0 — Verify institutional API access is achievable**
+- Apply for a Canvas Developer Key with **one** US institution (Berkeley and Michigan have historically been the most third-party-friendly).
+- Outcome determines the plan: if rejected, the multi-school story collapses and you stay NUS-only. Derisk this early.
+- Apply for Google Cloud OAuth consent screen verification for Classroom scopes (allow 4–6 weeks for Google review).
+
+### Steps (do these in order)
+
+**Step 1 — Add `institutions` table and tenant scoping**
+```sql
+create table institutions (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique,                    -- 'nus', 'berkeley', 'kid-school'
+  name text,
+  email_domain text[],                 -- ['u.nus.edu', 'nus.edu.sg']
+  lms_platform text not null,          -- 'canvas' | 'google_classroom' | 'blackboard'
+  lms_base_url text,
+  oauth_config jsonb,
+  branding jsonb,
+  feature_flags jsonb,
+  created_at timestamptz default now()
+);
+
+alter table users        add column institution_id uuid references institutions(id);
+alter table modules      add column institution_id uuid references institutions(id);
+alter table canvas_files add column institution_id uuid references institutions(id);
+alter table announcements add column institution_id uuid references institutions(id);
+alter table tasks        add column institution_id uuid references institutions(id);
+alter table embeddings   add column institution_id uuid references institutions(id);
+```
+Backfill all existing rows with the NUS institution_id. Update RLS policies to scope by `auth.uid()` AND `institution_id`.
+
+**Step 2 — Rename platform-specific tables to neutral names**
+- `canvas_files` → `resources`
+- Add a `kind` column: `'file' | 'page' | 'link' | 'video' | 'discussion'`
+- This is a one-time rename; do it before adding the second adapter.
+
+**Step 3 — Define the LMS adapter interface**
+Create `lib/lms/`:
+```
+lib/lms/
+  types.ts            # Course, Resource, Announcement, Assignment domain shapes
+  adapter.ts          # LmsAdapter interface (the port)
+  registry.ts         # platform name → adapter factory
+  canvas/
+    adapter.ts        # CanvasAdapter implements LmsAdapter
+    mappers.ts        # Canvas JSON → domain shape
+```
+The interface should expose: `listCourses`, `listResources`, `listAnnouncements`, `listAssignments`, `getResourceContent`. Adapters never leak platform-specific JSON beyond their own folder.
+
+**Step 4 — Refactor existing Canvas integration to fit the adapter**
+- Move `lib/canvas.ts` logic into `lib/lms/canvas/adapter.ts`.
+- Update `app/api/sync/route.ts` to look up the user's institution → resolve adapter via registry → call methods.
+- Sync code stops referencing "Canvas" anywhere.
+- This is a behavior-preserving refactor; existing tests should still pass.
+
+**Step 5 — Build the Google Classroom adapter (kid-led)**
+- Scope: implement `lib/lms/google-classroom/adapter.ts` against the Classroom REST API.
+- Auth: Google OAuth, scopes `classroom.courses.readonly`, `classroom.coursework.me.readonly`, `classroom.announcements.readonly`.
+- Mappers: convert Classroom JSON → domain shapes.
+- This is the apprentice's primary project for months 4–6 of funded runway. Aiden reviews PRs, pairs on tricky parts.
+- Acceptance test: kid signs in with their own school Google account, sees their real assignments, asks the AI a question about their own homework.
+
+**Step 6 — Email-domain routing on signup**
+- On signup, look up email domain → suggest institution from `institutions.email_domain`.
+- If no match, show a "Set up your school" flow: school name, LMS platform (dropdown), base URL.
+- First user from a new institution becomes a self-service tenant — Aiden gets an alert and reviews within 24h.
+
+**Step 7 — Build the Blackboard Learn adapter**
+- Only start once Canvas + Classroom are both stable in production.
+- Per-institution OAuth registration is required — build an admin onboarding flow alongside the adapter.
+- Estimated: 3–4 weeks for one focused developer.
+
+**Step 8 — Per-institution observability**
+- All Sentry/PostHog events must carry `institution_id` so you can debug school-specific failures.
+- Add an admin dashboard listing institutions, active users per institution, adapter error rates.
+
+### What NOT to build in Phase 4
+- A plugin / dynamic adapter loader — static registry is sufficient.
+- A generic "LMS query language" — the interface in Step 3 is enough.
+- D2L Brightspace, Schoology, Moodle adapters — defer until an actual user from those schools is asking.
+- Multi-region infrastructure — single Supabase region is fine until you have real EU/US data residency demands.
+- A custom CMS for school-specific configuration — `feature_flags` jsonb is enough.
+
+### Pitch implication
+After Phase 4, the one-line pitch becomes: *"Studex is the AI dashboard for the LMS that ~80% of students at top US universities and ~60% of US K-12 schools actually use."* That is a fundable story; the NUS-only version was not.
+
+---
+
 ## COST AT EACH PHASE
 
 | Phase | Aiden's cost | AI cost |
