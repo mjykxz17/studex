@@ -11,6 +11,7 @@ const previewableFile = {
   uploadedAt: "2026-03-13T13:30:00.000Z",
   summary: "- Week 1 notes",
   canvasUrl: "https://canvas.example/files/1",
+  canvasFileId: null,
   extractedText: "Week 1 notes",
   previewKind: "pdf" as const,
   contentType: "application/pdf",

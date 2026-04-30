@@ -14,6 +14,7 @@ const sample: NewFile[] = [
     uploadedAt: "2026-04-20T00:00:00Z",
     summary: "Week 1 introduction",
     canvasUrl: "https://canvas.nus.edu.sg/...",
+    canvasFileId: null,
     extractedText: null,
     previewKind: "pdf",
     contentType: "application/pdf",

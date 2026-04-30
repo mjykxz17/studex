@@ -17,6 +17,8 @@ const sample: ModuleSummary[] = [
     recentFile: null,
     examSummary: null,
     nusmods: null,
+    pages: [],
+    courseModules: [],
   },
 ];
 

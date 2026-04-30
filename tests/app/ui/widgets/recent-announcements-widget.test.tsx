@@ -8,6 +8,7 @@ const sample: AnnouncementSummary[] = [
     title: "Mid-semester exam",
     moduleCode: "CS3235",
     summary: "Remember to bring your student ID on the day of the exam.",
+    bodyHtml: "",
     postedLabel: "2 days ago",
     postedAt: "2026-04-18T00:00:00Z",
     importance: "normal",

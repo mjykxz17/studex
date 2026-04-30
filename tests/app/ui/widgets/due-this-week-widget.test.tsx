@@ -11,6 +11,8 @@ const sampleTasks: WeeklyTask[] = [
     dueDate: "2026-04-25T00:00:00Z",
     status: "due-soon",
     source: "canvas",
+    sourceRefId: null,
+    hasDescription: false,
   },
   {
     id: "t2",
@@ -20,6 +22,8 @@ const sampleTasks: WeeklyTask[] = [
     dueDate: "2026-04-27T00:00:00Z",
     status: "upcoming",
     source: "canvas",
+    sourceRefId: null,
+    hasDescription: false,
   },
 ];
 

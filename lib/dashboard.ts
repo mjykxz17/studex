@@ -14,6 +14,7 @@ import type {
   WeeklyTask,
 } from "@/lib/contracts";
 import { fetchNUSModsModule, type NUSModsData } from "@/lib/nusmods";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 type RelationRecord = { code?: string | null };
 
@@ -25,11 +26,34 @@ type ModuleQueryRow = {
   sync_enabled: boolean | null;
   canvas_files: Array<{
     id: string;
+    canvas_file_id: string | null;
     filename: string | null;
     file_type: string | null;
     uploaded_at: string | null;
     extracted_text: string | null;
     canvas_url: string | null;
+  }> | null;
+  canvas_pages: Array<{
+    id: string;
+    page_url: string | null;
+    title: string | null;
+    updated_at: string | null;
+  }> | null;
+  course_modules: Array<{
+    id: string;
+    name: string | null;
+    position: number | null;
+    state: string | null;
+    items_count: number | null;
+    course_module_items: Array<{
+      id: string;
+      title: string | null;
+      item_type: string | null;
+      position: number | null;
+      content_ref: string | null;
+      external_url: string | null;
+      indent: number | null;
+    }> | null;
   }> | null;
 };
 
@@ -40,6 +64,8 @@ type TaskQueryRow = {
   title: string | null;
   due_at: string | null;
   source: string | null;
+  description_html: string | null;
+  source_ref_id: string | null;
   courses: RelationRecord | RelationRecord[] | null;
 };
 
@@ -343,7 +369,7 @@ function stripHtmlForSummary(value: string | null | undefined): string {
 async function loadModuleRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
   return supabase
     .from("courses")
-    .select("id, code, title, last_canvas_sync, sync_enabled, canvas_files(id, filename, file_type, uploaded_at, extracted_text, canvas_url)")
+    .select("id, code, title, last_canvas_sync, sync_enabled, canvas_files(id, canvas_file_id, filename, file_type, uploaded_at, extracted_text, canvas_url), canvas_pages(id, page_url, title, updated_at), course_modules(id, name, position, state, items_count, course_module_items(id, title, item_type, position, content_ref, external_url, indent))")
     .eq("user_id", userId)
     .order("code", { ascending: true });
 }
@@ -390,6 +416,7 @@ function buildFileSummary(row: ModuleFileRow): CanvasFileSummary {
     uploadedAt: row.uploaded_at,
     summary: extractedText ? `${extractedText.slice(0, 160).trim()}…` : "Open this file to preview it.",
     canvasUrl: row.canvas_url,
+    canvasFileId: row.canvas_file_id ?? null,
     extractedText,
     previewKind: getPreviewKind(name, extractedText),
     contentType: guessContentType(name),
@@ -539,7 +566,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
       loadModuleRows(supabase, userId),
       supabase
         .from("tasks")
-        .select("id, title, due_at, source, courses(code)")
+        .select("id, title, due_at, source, description_html, source_ref_id, courses(code)")
         .eq("user_id", userId)
         .eq("completed", false)
         .order("due_at", { ascending: true, nullsFirst: false }),
@@ -567,6 +594,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
       dueDate: task.due_at,
       status: getTaskStatus(task.due_at),
       source: task.source ?? "Canvas",
+      sourceRefId: task.source_ref_id ?? null,
+      hasDescription: Boolean(task.description_html && task.description_html.length > 0),
     }));
 
     const announcements: AnnouncementSummary[] = ((announcementsData ?? []) as AnnouncementQueryRow[]).map((announcement) => {
@@ -578,6 +607,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
         summary: bodyPreview
           ? `${bodyPreview.slice(0, 220).trim()}${bodyPreview.length > 220 ? "…" : ""}`
           : "Open this announcement to read the full message.",
+        bodyHtml: sanitizeHtml(announcement.body_raw),
         postedLabel: formatRelativeDayLabel(announcement.posted_at),
         postedAt: announcement.posted_at,
         importance:
@@ -619,6 +649,39 @@ export async function loadDashboardData(): Promise<DashboardData> {
           recentFile: moduleFiles[0] ?? null,
           examSummary: nusmods?.exam ?? null,
           nusmods,
+          pages: (module.canvas_pages ?? [])
+            .map((p) => ({
+              id: p.id,
+              pageUrl: p.page_url ?? "",
+              title: p.title ?? "Untitled page",
+              updatedAt: p.updated_at,
+              updatedLabel: p.updated_at
+                ? new Date(p.updated_at).toLocaleDateString("en-SG", { day: "numeric", month: "short" })
+                : "—",
+            }))
+            .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "")),
+          courseModules: (module.course_modules ?? [])
+            .slice()
+            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+            .map((m) => ({
+              id: m.id,
+              name: m.name ?? "Untitled module",
+              position: m.position,
+              state: m.state,
+              itemsCount: m.items_count,
+              items: (m.course_module_items ?? [])
+                .slice()
+                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                .map((it) => ({
+                  id: it.id,
+                  title: it.title ?? "Untitled item",
+                  itemType: it.item_type ?? "Unknown",
+                  position: it.position,
+                  contentRef: it.content_ref,
+                  externalUrl: it.external_url,
+                  indent: it.indent,
+                })),
+            })),
         };
       }),
     );

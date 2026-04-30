@@ -31,6 +31,7 @@ export type CanvasFileSummary = {
   uploadedAt: string | null;
   summary: string;
   canvasUrl: string | null;
+  canvasFileId: string | null;  // used by module-tree to map module-item content_ref → local file
   extractedText: string | null;
   previewKind: FilePreviewKind;
   contentType: string | null;
@@ -44,6 +45,8 @@ export type WeeklyTask = {
   dueDate?: string | null;
   status: "due-soon" | "upcoming" | "no-date";
   source: string;
+  sourceRefId: string | null;  // Canvas assignment id; module tree uses to dispatch Assignment items
+  hasDescription: boolean;     // UI uses this to decide whether to show the "details" button
 };
 
 export type AnnouncementSummary = {
@@ -51,9 +54,37 @@ export type AnnouncementSummary = {
   title: string;
   moduleCode: string;
   summary: string;
+  bodyHtml: string;            // sanitized body for in-app rendering
   postedLabel: string;
   postedAt: string | null;
   importance: "high" | "normal" | "low";
+};
+
+export type CanvasPageSummary = {
+  id: string;
+  pageUrl: string;
+  title: string;
+  updatedAt: string | null;
+  updatedLabel: string;
+};
+
+export type CourseModuleItemSummary = {
+  id: string;
+  title: string;
+  itemType: string;        // 'Page' | 'File' | 'Assignment' | 'ExternalUrl' | 'SubHeader' | 'Discussion' | ...
+  position: number | null;
+  contentRef: string | null;   // canvas_file_id, page_url, or assignment_id depending on itemType
+  externalUrl: string | null;
+  indent: number | null;
+};
+
+export type CourseModuleSummary = {
+  id: string;
+  name: string;
+  position: number | null;
+  state: string | null;
+  itemsCount: number | null;
+  items: CourseModuleItemSummary[];
 };
 
 export type DashboardChange = {
@@ -91,6 +122,8 @@ export type ModuleSummary = {
   recentFile: CanvasFileSummary | null;
   examSummary: NUSModsExam | null;
   nusmods?: NUSModsData | null;
+  pages: CanvasPageSummary[];          // ADDED
+  courseModules: CourseModuleSummary[]; // ADDED
 };
 
 export type GradeSummary = {
