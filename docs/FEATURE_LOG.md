@@ -13,6 +13,24 @@
 
 ---
 
+## 2026-05-01 · UI overhaul — Apple-style polish + interaction redesign
+**Status:** Planned (brainstorming scope)
+**Why:** User feedback: "I want the UI to be more flexible for user, it should be optimized for what I want to show, buttons should be at intuitive places. I want the transition or anything to follow the apple.com style."
+**Bundled concerns to scope:**
+1. Information density / layout flexibility
+2. Information hierarchy ("optimized for what I want to show")
+3. Button placement / affordance ("intuitive places")
+4. Visual + motion language (Apple aesthetic)
+**Scope decisions pending:**
+- Which surface(s) first? (Home dashboard / Module view / NUSMods Progress tab / Dialogs / All)
+- Customisation depth — drag-to-rearrange widgets, or fixed-but-better-designed?
+- Motion library — `motion` (framer-motion successor, ~30KB) vs hand-rolled CSS transitions?
+- Typography — go heavier on existing Lora serif, or import SF Pro analogue?
+- Theme — keep stone palette or shift to true Apple grays + restraint?
+**No commits yet — need user direction on scope before any code.**
+
+---
+
 ## 2026-05-01 · Bucket override dropdown in takings editor
 **Status:** Shipped
 **Commits:** `cf4c390`
