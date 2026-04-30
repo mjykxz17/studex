@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { AuditResult } from "@/lib/curriculum/types";
 
 import { BucketCard } from "./bucket-card";
+import { ModuleTakingsEditor } from "./module-takings-editor";
 
 type LoadState =
   | { kind: "idle" }
@@ -13,9 +14,9 @@ type LoadState =
 
 export function ProgressView() {
   const [state, setState] = useState<LoadState>({ kind: "idle" });
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   useEffect(() => {
-    if (state.kind !== "idle") return;
     let cancelled = false;
     fetch("/api/audit")
       .then(async (res) => {
@@ -37,11 +38,16 @@ export function ProgressView() {
     return () => {
       cancelled = true;
     };
-  }, [state.kind]);
+  }, [refetchTrigger]);
 
-  if (state.kind === "idle") return <p className="text-sm text-stone-500">Loading audit…</p>;
-  if (state.kind === "error")
+  const refetchAudit = () => setRefetchTrigger((n) => n + 1);
+
+  if (state.kind === "idle") {
+    return <p className="text-sm text-stone-500">Loading audit…</p>;
+  }
+  if (state.kind === "error") {
     return <p className="text-sm text-rose-700">Failed to load audit: {state.message}</p>;
+  }
 
   const { audit } = state;
   const pct = Math.round((audit.totalMc.current / audit.totalMc.required) * 100);
@@ -76,6 +82,7 @@ export function ProgressView() {
           <BucketCard key={b.id} bucket={b} />
         ))}
       </div>
+      <ModuleTakingsEditor onChange={refetchAudit} />
     </div>
   );
 }
