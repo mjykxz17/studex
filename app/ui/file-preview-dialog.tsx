@@ -33,16 +33,24 @@ export function FilePreviewDialog({
 
   useEffect(() => {
     if (!isOpen || !isDocx || docxState.kind !== "idle") return;
+    let cancelled = false;
     fetch(`/api/files/${file.id}/docx`)
       .then(async (res) => {
         const json = await res.json();
+        if (cancelled) return;
         if (!res.ok) {
           setDocxState({ kind: "error", message: json.error ?? "Failed to render DOCX" });
           return;
         }
         setDocxState({ kind: "ready", html: json.html });
       })
-      .catch((err) => setDocxState({ kind: "error", message: err instanceof Error ? err.message : "Failed" }));
+      .catch((err) => {
+        if (cancelled) return;
+        setDocxState({ kind: "error", message: err instanceof Error ? err.message : "Failed" });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, isDocx, file.id, docxState.kind]);
 
   const previewUrl = `/api/files/${file.id}/preview`;

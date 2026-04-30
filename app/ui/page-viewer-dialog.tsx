@@ -29,13 +29,21 @@ export function PageViewerDialog({
   const [state, setState] = useState<LoadState>({ kind: "idle" });
 
   useBodyScrollLock(isOpen);
-  useEscapeToClose(isOpen, () => setIsOpen(false));
+
+  const closeDialog = () => {
+    setIsOpen(false);
+    setState({ kind: "idle" });
+  };
+
+  useEscapeToClose(isOpen, closeDialog);
 
   useEffect(() => {
     if (!isOpen || state.kind !== "idle") return;
+    let cancelled = false;
     fetch(`/api/pages/${page.id}`)
       .then(async (res) => {
         const json = await res.json();
+        if (cancelled) return;
         if (!res.ok) {
           setState({ kind: "error", message: json.error ?? "Failed to load page" });
           return;
@@ -43,8 +51,12 @@ export function PageViewerDialog({
         setState({ kind: "ready", html: json.bodyHtml, title: json.title });
       })
       .catch((err) => {
+        if (cancelled) return;
         setState({ kind: "error", message: err instanceof Error ? err.message : "Failed to load" });
       });
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, page.id, state.kind]);
 
   return (
@@ -57,7 +69,7 @@ export function PageViewerDialog({
             <div
               className="fixed inset-0 z-[700] bg-stone-950/45 p-4 backdrop-blur-sm sm:p-6"
               onMouseDown={(e) => {
-                if (e.target === e.currentTarget) setIsOpen(false);
+                if (e.target === e.currentTarget) closeDialog();
               }}
             >
               <div className="flex h-full items-center justify-center">
@@ -77,7 +89,7 @@ export function PageViewerDialog({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsOpen(false)}
+                      onClick={closeDialog}
                       className="rounded-[8px] border border-stone-200 px-3 py-2 text-[11px] font-medium text-stone-500"
                     >
                       Close
