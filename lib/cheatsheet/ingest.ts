@@ -1,20 +1,24 @@
 // lib/cheatsheet/ingest.ts
 import "server-only";
 
-// @ts-expect-error — pdf-parse v2 ESM types omit a default export; @types/pdf-parse covers the shape
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 import { downloadCanvasFile } from "@/lib/canvas";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import type { IngestedFile } from "@/lib/cheatsheet/types";
 
 export async function extractPdfMarkdown(buf: Buffer): Promise<string> {
-  const result = await pdfParse(buf);
-  const raw = (result?.text ?? "").trim();
-  if (!raw) {
-    throw new Error("PDF contained no extractable text (likely scanned)");
+  const parser = new PDFParse({ data: new Uint8Array(buf) });
+  try {
+    const result = await parser.getText();
+    const raw = (result?.text ?? "").trim();
+    if (!raw) {
+      throw new Error("PDF contained no extractable text (likely scanned)");
+    }
+    return raw.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  } finally {
+    await parser.destroy();
   }
-  return raw.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 export type IngestParams = {
