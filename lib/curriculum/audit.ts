@@ -2,6 +2,7 @@ import {
   qualifiesForConstraints,
   matchWildcard,
 } from "@/lib/curriculum/match";
+import { suggestModulesForBucket, type CatalogEntry } from "@/lib/curriculum/suggest";
 import type {
   AuditResult,
   Bucket,
@@ -148,4 +149,24 @@ function qualifiesForBucket(t: TakenModule, bucket: Bucket, allTakings: TakenMod
     case "or":
       return false;   // OR handled in second pass
   }
+}
+
+export function auditDegreeWithSuggestions(
+  spec: ProgramSpec,
+  takings: TakenModule[],
+  catalog: CatalogEntry[],
+  suggestionLimit = 5,
+): AuditResult {
+  const result = auditDegree(spec, takings);
+  result.buckets = result.buckets.map((b) => {
+    const bucketSpec = spec.buckets.find((s) => s.id === b.id)!;
+    return {
+      ...b,
+      suggestions:
+        b.missing > 0
+          ? suggestModulesForBucket(bucketSpec, takings, catalog, suggestionLimit)
+          : [],
+    };
+  });
+  return result;
 }
