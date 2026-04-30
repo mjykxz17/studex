@@ -164,6 +164,23 @@ async function upsertCourse(userId: string, course: CanvasCourse) {
   return data;
 }
 
+async function ensureModuleTaking(userId: string, code: string | null) {
+  if (!code) return;
+  const supabase = getSupabaseAdminClient();
+  const { data: existing } = await supabase
+    .from("module_takings")
+    .select("id, status")
+    .eq("user_id", userId)
+    .eq("module_code", code)
+    .maybeSingle();
+  if (existing) return;   // don't overwrite user-set status
+  await supabase.from("module_takings").insert({
+    user_id: userId,
+    module_code: code,
+    status: "in_progress",
+  });
+}
+
 async function getSafeFileDownloadUrl(fileId: number | string) {
   try {
     return await getFileDownloadUrl(fileId);
@@ -806,6 +823,7 @@ export async function runDiscoverySync(send: SyncSender) {
   for (const course of courses) {
     const courseRow = await upsertCourse(user.id, course);
     upsertedCourses.push(courseRow);
+    await ensureModuleTaking(user.id, courseRow.code);
     void fetchNUSModsModule(courseRow.code ?? "");
   }
 
