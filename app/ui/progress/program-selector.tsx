@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/app/ui/primitives/input";
 
 const PROGRAM_LABELS: Record<string, string> = {
   "bcomp-isc-2024": "BComp Information Security (AY24/25)",
@@ -59,18 +60,14 @@ export function ProgramSelector({ onChange }: Props) {
   return (
     <div className="flex items-center gap-2">
       <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400">Program</label>
-      <select
-        value={current ?? ""}
-        onChange={(e) => select(e.target.value)}
-        className="rounded-[6px] border border-stone-200 bg-white px-2 py-1 text-[11px] font-medium text-stone-700"
-      >
+      <Select value={current ?? ""} onChange={(e) => select(e.target.value)}>
         {current === null ? <option value="">— default —</option> : null}
         {available.map((p) => (
           <option key={p} value={p}>
             {PROGRAM_LABELS[p] ?? p}
           </option>
         ))}
-      </select>
+      </Select>
       {error ? <span className="text-[10px] text-rose-700">{error}</span> : null}
     </div>
   );
