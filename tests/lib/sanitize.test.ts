@@ -40,8 +40,9 @@ describe("sanitizeHtml", () => {
     expect(out).not.toContain("javascript:");
   });
 
-  it("returns empty string for null/undefined input", () => {
+  it("returns empty string for null/undefined/empty input", () => {
     expect(sanitizeHtml(null)).toBe("");
     expect(sanitizeHtml(undefined)).toBe("");
+    expect(sanitizeHtml("")).toBe("");
   });
 });
