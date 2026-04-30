@@ -30,7 +30,7 @@ export function ModuleTree({ moduleCode, courseModules, pages, files, tasks }: P
   if (courseModules.length === 0) {
     return (
       <div className="rounded-[10px] border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-center">
-        <p className="text-[12px] text-stone-500">No Canvas modules yet — sync to populate the lecturer's structure.</p>
+        <p className="text-[12px] text-stone-500">No Canvas modules yet — sync to populate the lecturer&apos;s structure.</p>
       </div>
     );
   }
