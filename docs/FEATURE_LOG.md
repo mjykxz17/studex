@@ -13,9 +13,24 @@
 
 ---
 
-## 2026-05-01 · UI overhaul — Apple-style polish + interaction redesign
-**Status:** Spec written, awaiting plan
+## 2026-05-01 · UI overhaul — Apple-style polish + interaction redesign (Phase 1)
+**Status:** Shipped (awaiting browser smoke test)
 **Spec:** `docs/superpowers/specs/2026-05-01-ui-design-system-phase-1-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-01-ui-design-system-phase-1.md`
+**Commits:** `3f49d51` → `9628fa0` (12 implementation commits, subagent-driven execution)
+**Tests:** 175 → 201 (26 new primitive + Pill tests)
+**Files shipped:**
+- New tokens: `app/tokens.css` (3-layer: primitives → semantic → density, with `motion-hover` / `motion-press` utilities + `prefers-reduced-motion` honour)
+- New primitives: `app/ui/primitives/{container,card,button,input,density-selector}.tsx`
+- Extended: `app/ui/dashboard/shared.tsx` `Pill` (5 new tones + 3 legacy aliases)
+- FOUC blocker: `app/layout.tsx` reads localStorage + sets `<html data-density>` synchronously before paint
+- Migrated to primitives: `app/ui/progress/{progress-view,bucket-card,program-selector,module-takings-editor}.tsx`
+- Interaction refinements applied:
+  - Tracked-module rows show only status + grade inline; bucket override + Remove behind hover-revealed `•••` menu (popover with click-outside-to-close)
+  - Primary `Add to plan` button paired with NUSMods search input
+  - Density selector + Program selector both right-aligned in Progress header
+- Bucket grid responsive: `md:grid-cols-2 xl:grid-cols-3`
+**Open thread:** Manual browser smoke (14-step checklist in plan Task 13) not yet run
 **Why:** User feedback: "I want the UI to be more flexible for user, it should be optimized for what I want to show, buttons should be at intuitive places. I want the transition or anything to follow the apple.com style."
 
 **Scope decisions made (brainstormed 2026-05-01):**
