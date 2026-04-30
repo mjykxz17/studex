@@ -42,9 +42,9 @@ export function FileCard({
               href={file.canvasUrl}
               target="_blank"
               rel="noreferrer"
-              className="rounded-[8px] border border-stone-200 bg-white px-3 py-2 text-[11px] font-medium text-stone-700"
+              className="text-[10px] font-medium text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline"
             >
-              Canvas
+              Source
             </a>
           ) : null}
           <FilePreviewDialog file={file} moduleCode={moduleCode} />

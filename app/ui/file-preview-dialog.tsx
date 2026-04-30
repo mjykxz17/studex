@@ -51,7 +51,7 @@ export function FilePreviewDialog({
   const extractedPreview = file.extractedText?.slice(0, 20_000).trim() ?? "";
   const description =
     file.summary ||
-    "Preview synced Canvas files inline when the browser supports them, with extracted-text fallback for office formats.";
+    "View synced Canvas content directly in Studex — PDFs, images, DOCX, and videos render inline. Use the source link only as a fallback.";
 
   useBodyScrollLock(isOpen);
   useEscapeToClose(isOpen, () => setIsOpen(false));
@@ -111,9 +111,9 @@ export function FilePreviewDialog({
                           href={file.canvasUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-[8px] border border-stone-300 px-3 py-1.5 text-[11px] font-semibold text-stone-700"
+                          className="text-[10px] font-medium text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline"
                         >
-                          Open in Canvas
+                          View source on Canvas
                         </a>
                       ) : null}
                       {(file.previewKind === "pdf" || file.previewKind === "image") ? (
@@ -172,9 +172,9 @@ export function FilePreviewDialog({
                       ) : (
                         <div className="flex h-full items-center justify-center px-6 text-center">
                           <div>
-                            <p className="text-sm font-semibold text-stone-900">Inline preview is not available for this file format yet.</p>
+                            <p className="text-sm font-semibold text-stone-900">Inline preview is not available for this format yet.</p>
                             <p className="mt-2 text-sm leading-6 text-stone-500">
-                              Studex keeps Canvas as the file host. For binary office formats without extracted text, open the source in Canvas and use Studex for summaries and retrieval.
+                              Studex hasn't added a renderer for this format. The extracted text (when available) will appear in the cheatsheet pipeline.
                             </p>
                           </div>
                         </div>
