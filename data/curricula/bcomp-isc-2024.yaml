@@ -1,0 +1,155 @@
+id: bcomp-isc-2024
+name: "Bachelor of Computing in Information Security"
+matriculation_year: 2024
+total_mc: 160
+source_url: "https://www.comp.nus.edu.sg/programmes/ug/isc/curr/"
+source_fetched_at: "2026-05-01"
+
+buckets:
+  # --- Common Curriculum (40 MC) ---
+  - id: cc-digital-literacy
+    name: "Digital Literacy"
+    mc: 4
+    rule:
+      kind: all_of
+      modules: ["CS1010"]
+
+  - id: cc-critique-expression
+    name: "Critique and Expression"
+    mc: 4
+    rule:
+      kind: wildcard
+      pattern: "GEX%"
+
+  - id: cc-cultures-connections
+    name: "Cultures and Connections"
+    mc: 4
+    rule:
+      kind: wildcard
+      pattern: "GEC%"
+
+  - id: cc-data-literacy
+    name: "Data Literacy"
+    mc: 4
+    rule:
+      kind: choose_n
+      n: 1
+      modules: ["GEA1000", "BT1101", "ST1131", "DSE1101"]
+
+  - id: cc-singapore-studies
+    name: "Singapore Studies"
+    mc: 4
+    rule:
+      kind: wildcard
+      pattern: "GES%"
+
+  - id: cc-communities-engagement
+    name: "Communities and Engagement"
+    mc: 4
+    rule:
+      kind: wildcard
+      pattern: "GEN%"
+
+  - id: cc-computing-ethics
+    name: "Computing Ethics"
+    mc: 4
+    rule:
+      kind: all_of
+      modules: ["IS1108"]
+
+  - id: cc-id-cd
+    name: "Interdisciplinary & Cross-Disciplinary Education"
+    mc: 12
+    notes: "Min 2 ID courses; max 1 CD course (Phase A: not auto-validated)"
+    rule:
+      kind: open
+
+  # --- Computing Foundation (32 MC) ---
+  - id: foundation
+    name: "Computing Foundation"
+    mc: 32
+    rule:
+      kind: all_of
+      modules: ["CS1231S", "CS2030", "CS2040C", "CS2100", "CS2101", "CS2103T", "CS2105", "CS2106"]
+
+  # --- Information Security (28 MC) ---
+  - id: is-core-intro-and-sec
+    name: "Information Security Core: CS2107 + CS3235"
+    mc: 8
+    rule:
+      kind: all_of
+      modules: ["CS2107", "CS3235"]
+
+  - id: is-research-or-pair
+    name: "Information Security: IFS4205 OR (CS4238 + IFS4103)"
+    mc: 8
+    rule:
+      kind: or
+      options:
+        - label: "Research route"
+          modules: ["IFS4205"]
+        - label: "Pair route"
+          modules: ["CS4238", "IFS4103"]
+
+  - id: is-mgmt
+    name: "Information Security Management"
+    mc: 4
+    rule:
+      kind: all_of
+      modules: ["IS4231"]
+
+  - id: is-electives
+    name: "Information Security Electives"
+    mc: 8
+    notes: "Choose 2 from the IS elective list. School-approved L4000+ also acceptable but not in spec."
+    rule:
+      kind: choose_n
+      n: 2
+      modules:
+        - "CS4230"
+        - "CS4236"
+        - "MA4261"
+        - "CS4238"
+        - "CS4239"
+        - "CS4257"
+        - "CS4276"
+        - "CS5231"
+        - "CS5321"
+        - "CS5322"
+        - "CS5331"
+        - "CS5332"
+        - "IFS4101"
+        - "IFS4102"
+        - "IFS4103"
+        - "IS4204"
+        - "IS4233"
+        - "IS4234"
+        - "IS4238"
+        - "IS4302"
+
+  # --- Computing Breadth (12 MC) ---
+  - id: breadth
+    name: "Computing Breadth"
+    mc: 12
+    notes: "CS/IS L3000+ or CP-coded; min 6 MC industrial experience (not auto-validated in Phase A)"
+    rule:
+      kind: open
+      constraints:
+        prefix: ["CS", "IS", "CP"]
+        level_min: 3000
+
+  # --- Mathematics (12 MC) ---
+  - id: math
+    name: "Mathematics"
+    mc: 12
+    rule:
+      kind: all_of
+      modules: ["MA1521", "MA1522", "ST2334"]
+
+  # --- Unrestricted Electives (36 MC) ---
+  - id: ue
+    name: "Unrestricted Electives"
+    mc: 36
+    notes: "Any modules; without A-level/H2 math, MA1301/X required"
+    rule:
+      kind: open
