@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { Button } from "@/app/ui/primitives/button";
+import { Card } from "@/app/ui/primitives/card";
+import { Input, Select } from "@/app/ui/primitives/input";
+
 type Taking = {
   id: string;
   module_code: string;
@@ -76,7 +80,7 @@ export function ModuleTakingsEditor({ onChange, buckets }: Props) {
       setError(json.error ?? "Failed to update");
       return;
     }
-    await refresh();
+    refresh();
     onChange();
   };
 
@@ -91,7 +95,7 @@ export function ModuleTakingsEditor({ onChange, buckets }: Props) {
       setError(json.error ?? "Failed to delete");
       return;
     }
-    await refresh();
+    refresh();
     onChange();
   };
 
@@ -106,87 +110,160 @@ export function ModuleTakingsEditor({ onChange, buckets }: Props) {
       setError(json.error ?? "Failed to add");
       return;
     }
-    await refresh();
+    refresh();
     onChange();
   };
 
   return (
-    <section className="rounded-[12px] border border-stone-200 bg-white px-5 py-5">
+    <Card>
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">My modules</p>
-          <h2 className="mt-1 text-[16px] font-semibold tracking-tight text-stone-950">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-fg-tertiary)]">
+            My modules
+          </p>
+          <h2 className="mt-1 text-[16px] font-semibold tracking-tight text-[var(--color-fg-primary)]">
             Track what you&apos;ve taken
           </h2>
         </div>
-        <p className="text-[11px] text-stone-500">{takings?.length ?? 0} tracked</p>
+        <p className="text-[11px] text-[var(--color-fg-tertiary)]">{takings?.length ?? 0} tracked</p>
       </div>
 
       <AddModuleForm onAdd={addModule} />
 
-      {error ? <p className="mt-3 text-[12px] text-rose-700">{error}</p> : null}
+      {error ? (
+        <p className="mt-3 text-[11px] text-[var(--color-danger)]">{error}</p>
+      ) : null}
 
       {takings === null ? (
-        <p className="mt-4 text-sm text-stone-500">Loading…</p>
+        <p className="mt-4 text-[var(--font-size-body)] text-[var(--color-fg-tertiary)]">Loading…</p>
       ) : takings.length === 0 ? (
-        <p className="mt-4 text-sm text-stone-500">
+        <p className="mt-4 text-[var(--font-size-body)] text-[var(--color-fg-tertiary)]">
           No modules tracked yet. Add one above, or sync a Canvas course to auto-populate in-progress modules.
         </p>
       ) : (
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-4 space-y-1.5">
           {takings.map((t) => (
-            <li
+            <TakingRow
               key={t.id}
-              className="flex flex-col gap-2 rounded-[8px] border border-stone-200 bg-[#fcfbf9] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <span className="text-[12px] font-semibold text-stone-900">{t.module_code}</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={t.status}
-                  onChange={(e) => updateTaking(t, { status: e.target.value as Taking["status"] })}
-                  className="rounded-[6px] border border-stone-200 bg-white px-2 py-1 text-[11px]"
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={t.bucket_override ?? ""}
-                  onChange={(e) =>
-                    updateTaking(t, { bucket_override: e.target.value || null })
-                  }
-                  title="Override which bucket this module counts toward"
-                  className="rounded-[6px] border border-stone-200 bg-white px-2 py-1 text-[11px]"
-                >
-                  <option value="">Auto-assign</option>
-                  {buckets.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      → {b.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  placeholder="Grade"
-                  value={t.grade ?? ""}
-                  onChange={(e) => updateTaking(t, { grade: e.target.value || null })}
-                  className="w-16 rounded-[6px] border border-stone-200 bg-white px-2 py-1 text-[11px]"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeTaking(t)}
-                  className="rounded-[6px] border border-stone-200 bg-white px-2 py-1 text-[11px] font-medium text-stone-500 hover:text-rose-700"
-                >
-                  Remove
-                </button>
-              </div>
-            </li>
+              taking={t}
+              buckets={buckets}
+              onUpdate={updateTaking}
+              onRemove={removeTaking}
+            />
           ))}
         </ul>
       )}
-    </section>
+    </Card>
+  );
+}
+
+function TakingRow({
+  taking,
+  buckets,
+  onUpdate,
+  onRemove,
+}: {
+  taking: Taking;
+  buckets: Array<{ id: string; name: string }>;
+  onUpdate: (t: Taking, patch: Partial<Taking>) => Promise<void>;
+  onRemove: (t: Taking) => Promise<void>;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const wrapRef = useRef<HTMLLIElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
+
+  return (
+    <li
+      ref={wrapRef}
+      className="group relative flex items-center gap-2 rounded-[var(--radius-sm)] px-2 py-[var(--space-row-y)] hover:bg-[var(--color-bg-secondary)] motion-hover"
+    >
+      <span className="w-20 text-[12px] font-semibold text-[var(--color-fg-primary)]">
+        {taking.module_code}
+      </span>
+      <Select
+        value={taking.status}
+        onChange={(e) => onUpdate(taking, { status: e.target.value as Taking["status"] })}
+        className="text-[11px]"
+      >
+        {STATUSES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </Select>
+      <Input
+        type="text"
+        placeholder="Grade"
+        value={taking.grade ?? ""}
+        onChange={(e) => onUpdate(taking, { grade: e.target.value || null })}
+        className="w-16 text-[11px]"
+      />
+      <div className="flex-1" />
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label="More actions"
+        onClick={() => setMenuOpen((v) => !v)}
+        className="opacity-0 group-hover:opacity-100 motion-hover"
+      >
+        •••
+      </Button>
+      {menuOpen ? (
+        <div className="absolute right-2 top-full z-10 mt-1 w-56 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] py-1 shadow-[var(--shadow-lift)]">
+          <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-fg-tertiary)]">
+            Move to bucket
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              onUpdate(taking, { bucket_override: null });
+              setMenuOpen(false);
+            }}
+            className="w-full px-3 py-1.5 text-left text-[11px] text-[var(--color-fg-primary)] hover:bg-[var(--color-bg-secondary)]"
+          >
+            Auto-assign
+          </button>
+          {buckets.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => {
+                onUpdate(taking, { bucket_override: b.id });
+                setMenuOpen(false);
+              }}
+              className={`w-full px-3 py-1.5 text-left text-[11px] hover:bg-[var(--color-bg-secondary)] ${
+                taking.bucket_override === b.id
+                  ? "text-[var(--color-accent)] font-medium"
+                  : "text-[var(--color-fg-primary)]"
+              }`}
+            >
+              → {b.name}
+            </button>
+          ))}
+          <div className="my-1 border-t border-[color:var(--color-border)]" />
+          <button
+            type="button"
+            onClick={() => {
+              onRemove(taking);
+              setMenuOpen(false);
+            }}
+            className="w-full px-3 py-1.5 text-left text-[11px] text-[var(--color-danger)] hover:bg-[var(--color-bg-secondary)]"
+          >
+            Remove
+          </button>
+        </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -195,6 +272,7 @@ function AddModuleForm({ onAdd }: { onAdd: (code: string, status: Taking["status
   const [results, setResults] = useState<SearchResult[]>([]);
   const [status, setStatus] = useState<Taking["status"]>("planning");
   const [searching, setSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -224,45 +302,47 @@ function AddModuleForm({ onAdd }: { onAdd: (code: string, status: Taking["status
     setResults([]);
   };
 
+  const focusInput = () => inputRef.current?.focus();
+
   return (
     <div className="mt-4 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <Input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search NUSMods (e.g. CS3235, security…)"
-          className="flex-1 min-w-[200px] rounded-[8px] border border-stone-200 bg-white px-3 py-2 text-[12px]"
+          className="flex-1 min-w-[220px]"
         />
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as Taking["status"])}
-          className="rounded-[8px] border border-stone-200 bg-white px-2 py-2 text-[11px]"
-        >
+        <Select value={status} onChange={(e) => setStatus(e.target.value as Taking["status"])}>
           {STATUSES.map((s) => (
             <option key={s.value} value={s.value}>
               {s.label}
             </option>
           ))}
-        </select>
+        </Select>
+        <Button variant="primary" size="md" onClick={focusInput}>
+          Add to plan
+        </Button>
       </div>
       {results.length > 0 ? (
-        <ul className="rounded-[8px] border border-stone-200 bg-white">
+        <ul className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] shadow-[var(--shadow-card)]">
           {results.map((r) => (
             <li key={r.code}>
               <button
                 type="button"
                 onClick={() => pick(r)}
-                className="w-full text-left px-3 py-2 text-[12px] text-stone-800 hover:bg-stone-50"
+                className="w-full text-left px-3 py-2 text-[12px] text-[var(--color-fg-primary)] hover:bg-[var(--color-bg-secondary)] motion-hover"
               >
                 <span className="font-semibold">{r.code}</span>{" "}
-                <span className="text-stone-500">— {r.title}</span>
+                <span className="text-[var(--color-fg-tertiary)]">— {r.title}</span>
               </button>
             </li>
           ))}
         </ul>
       ) : query.trim().length >= 2 && !searching ? (
-        <p className="text-[11px] text-stone-500">No matches.</p>
+        <p className="text-[11px] text-[var(--color-fg-tertiary)]">No matches.</p>
       ) : null}
     </div>
   );

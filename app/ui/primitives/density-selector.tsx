@@ -18,13 +18,11 @@ function readStored(): Density {
 }
 
 export function DensitySelector() {
-  const [density, setDensity] = useState<Density>("comfortable");
+  const [density, setDensity] = useState<Density>(readStored);
 
   useEffect(() => {
-    const initial = readStored();
-    setDensity(initial);
-    document.documentElement.setAttribute("data-density", initial);
-  }, []);
+    document.documentElement.setAttribute("data-density", density);
+  }, [density]);
 
   const select = (next: Density) => {
     setDensity(next);
