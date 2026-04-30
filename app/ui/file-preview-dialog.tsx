@@ -25,7 +25,6 @@ export function FilePreviewDialog({
 
   const [docxState, setDocxState] = useState<
     | { kind: "idle" }
-    | { kind: "loading" }
     | { kind: "ready"; html: string }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
@@ -34,7 +33,6 @@ export function FilePreviewDialog({
 
   useEffect(() => {
     if (!isOpen || !isDocx || docxState.kind !== "idle") return;
-    setDocxState({ kind: "loading" });
     fetch(`/api/files/${file.id}/docx`)
       .then(async (res) => {
         const json = await res.json();
@@ -136,7 +134,7 @@ export function FilePreviewDialog({
                           className="h-full w-full bg-black"
                           preload="metadata"
                         >
-                          <p className="p-4 text-sm">Your browser doesn't support inline video playback.</p>
+                          <p className="p-4 text-sm">Your browser doesn&apos;t support inline video playback.</p>
                         </video>
                       ) : file.previewKind === "image" ? (
                         <div className="flex h-full items-center justify-center overflow-auto bg-stone-100 p-4">
@@ -150,15 +148,15 @@ export function FilePreviewDialog({
                           <pre className="whitespace-pre-wrap break-words font-mono text-sm leading-6 text-stone-700">{extractedPreview}</pre>
                         </div>
                       ) : isDocx ? (
-                        docxState.kind === "loading" ? (
-                          <div className="p-5 text-sm text-stone-500">Rendering DOCX…</div>
-                        ) : docxState.kind === "ready" ? (
+                        docxState.kind === "ready" ? (
                           <div className="h-full overflow-auto p-6">
                             <div className="prose prose-stone max-w-none" dangerouslySetInnerHTML={{ __html: docxState.html }} />
                           </div>
                         ) : docxState.kind === "error" ? (
                           <div className="p-5 text-sm text-rose-700">DOCX render failed: {docxState.message}</div>
-                        ) : null
+                        ) : (
+                          <div className="p-5 text-sm text-stone-500">Rendering DOCX…</div>
+                        )
                       ) : file.previewKind === "office" && extractedPreview ? (
                         <div className="h-full overflow-auto p-5">
                           <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400">Extracted text fallback</p>
@@ -174,7 +172,7 @@ export function FilePreviewDialog({
                           <div>
                             <p className="text-sm font-semibold text-stone-900">Inline preview is not available for this format yet.</p>
                             <p className="mt-2 text-sm leading-6 text-stone-500">
-                              Studex hasn't added a renderer for this format. The extracted text (when available) will appear in the cheatsheet pipeline.
+                              Studex hasn&apos;t added a renderer for this format. The extracted text (when available) will appear in the cheatsheet pipeline.
                             </p>
                           </div>
                         </div>

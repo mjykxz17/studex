@@ -15,7 +15,6 @@ type Props = {
 
 type LoadState =
   | { kind: "idle" }
-  | { kind: "loading" }
   | { kind: "ready"; descriptionHtml: string; dueAt: string | null; title: string }
   | { kind: "error"; message: string };
 
@@ -34,7 +33,6 @@ export function AssignmentDetailDialog({
 
   useEffect(() => {
     if (!isOpen || state.kind !== "idle") return;
-    setState({ kind: "loading" });
     fetch(`/api/tasks/${taskId}`)
       .then(async (res) => {
         const json = await res.json();
@@ -96,11 +94,7 @@ export function AssignmentDetailDialog({
                     </button>
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto p-6">
-                    {state.kind === "loading" ? (
-                      <p className="text-sm text-stone-500">Loading…</p>
-                    ) : state.kind === "error" ? (
-                      <p className="text-sm text-rose-700">Failed to load: {state.message}</p>
-                    ) : state.kind === "ready" ? (
+                    {state.kind === "ready" ? (
                       state.descriptionHtml ? (
                         <div
                           className="prose prose-stone max-w-none"
@@ -109,7 +103,11 @@ export function AssignmentDetailDialog({
                       ) : (
                         <p className="text-sm text-stone-500">No description provided.</p>
                       )
-                    ) : null}
+                    ) : state.kind === "error" ? (
+                      <p className="text-sm text-rose-700">Failed to load: {state.message}</p>
+                    ) : (
+                      <p className="text-sm text-stone-500">Loading…</p>
+                    )}
                   </div>
                 </div>
               </div>

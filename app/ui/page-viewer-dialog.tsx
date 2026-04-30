@@ -16,7 +16,6 @@ type Props = {
 
 type LoadState =
   | { kind: "idle" }
-  | { kind: "loading" }
   | { kind: "ready"; html: string; title: string }
   | { kind: "error"; message: string };
 
@@ -34,7 +33,6 @@ export function PageViewerDialog({
 
   useEffect(() => {
     if (!isOpen || state.kind !== "idle") return;
-    setState({ kind: "loading" });
     fetch(`/api/pages/${page.id}`)
       .then(async (res) => {
         const json = await res.json();
@@ -86,16 +84,16 @@ export function PageViewerDialog({
                     </button>
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto p-6">
-                    {state.kind === "loading" ? (
-                      <p className="text-sm text-stone-500">Loading…</p>
-                    ) : state.kind === "error" ? (
-                      <p className="text-sm text-rose-700">Failed to load page: {state.message}</p>
-                    ) : state.kind === "ready" ? (
+                    {state.kind === "ready" ? (
                       <div
                         className="prose prose-stone max-w-none"
                         dangerouslySetInnerHTML={{ __html: state.html }}
                       />
-                    ) : null}
+                    ) : state.kind === "error" ? (
+                      <p className="text-sm text-rose-700">Failed to load page: {state.message}</p>
+                    ) : (
+                      <p className="text-sm text-stone-500">Loading…</p>
+                    )}
                   </div>
                 </div>
               </div>
