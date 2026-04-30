@@ -1,33 +1,43 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("pdf-parse", () => ({
-  default: vi.fn(),
-}));
+const getTextMock = vi.fn();
+const destroyMock = vi.fn(async () => undefined);
 
-import pdfParse from "pdf-parse";
+// Stable class-based mock so the global vi.restoreAllMocks() in tests/setup.ts
+// doesn't wipe the constructor between tests. Only the inner spies are reset.
+vi.mock("pdf-parse", () => ({
+  PDFParse: class {
+    async getText() {
+      return getTextMock();
+    }
+    async destroy() {
+      return destroyMock();
+    }
+  },
+}));
 
 import { extractPdfMarkdown } from "@/lib/cheatsheet/ingest";
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  getTextMock.mockReset();
+  destroyMock.mockClear();
 });
 
 describe("extractPdfMarkdown", () => {
   it("returns trimmed and normalized markdown from pdf-parse output", async () => {
-    vi.mocked(pdfParse).mockResolvedValue({
-      text: "  Hello\r\nWorld\n\n\n\nMore text  ",
-    } as never);
+    getTextMock.mockResolvedValue({ text: "  Hello\r\nWorld\n\n\n\nMore text  " });
     const md = await extractPdfMarkdown(Buffer.from("any-bytes"));
     expect(md).toBe("Hello\nWorld\n\nMore text");
+    expect(destroyMock).toHaveBeenCalled();
   });
 
   it("throws when the PDF has no extractable text", async () => {
-    vi.mocked(pdfParse).mockResolvedValue({ text: "   " } as never);
+    getTextMock.mockResolvedValue({ text: "   " });
     await expect(extractPdfMarkdown(Buffer.from("x"))).rejects.toThrow(/no extractable text/i);
   });
 
   it("throws when pdf-parse returns null/undefined text", async () => {
-    vi.mocked(pdfParse).mockResolvedValue({ text: null } as never);
+    getTextMock.mockResolvedValue({ text: null });
     await expect(extractPdfMarkdown(Buffer.from("x"))).rejects.toThrow(/no extractable text/i);
   });
 });
