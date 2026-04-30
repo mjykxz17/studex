@@ -29,6 +29,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var d=localStorage.getItem('studex.density');if(d==='compact'||d==='comfortable'||d==='spacious'){document.documentElement.setAttribute('data-density',d);}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} antialiased`}>
         {children}
       </body>
