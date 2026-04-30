@@ -99,6 +99,7 @@ const afterSync: DashboardData = {
       nusmods: null,
       pages: [],
       courseModules: [],
+      panoptoTabUrl: null,
     },
   ],
   tasks: [
@@ -209,6 +210,7 @@ const withMutedModuleContent: DashboardData = {
       nusmods: null,
       pages: [],
       courseModules: [],
+      panoptoTabUrl: null,
     },
   ],
   tasks: [

@@ -19,6 +19,7 @@ const sample: ModuleSummary[] = [
     nusmods: null,
     pages: [],
     courseModules: [],
+    panoptoTabUrl: null,
   },
 ];
 

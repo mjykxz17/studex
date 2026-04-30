@@ -8,6 +8,7 @@ import {
   getAnnouncements,
   getAssignmentsWithSubmissions,
   getCourses,
+  getCourseTabs,
   getFiles,
   getFileDownloadUrl,
   getModules,
@@ -22,6 +23,7 @@ import {
   type CanvasModuleItem,
   type CanvasPage,
 } from "@/lib/canvas";
+import { detectPanoptoTab } from "@/lib/canvas-url";
 import { type SyncCounts, type SyncEvent } from "@/lib/contracts";
 import { ensureDemoUser } from "@/lib/demo-user";
 import { fetchNUSModsModule } from "@/lib/nusmods";
@@ -768,10 +770,24 @@ async function processCourseSync(params: {
     counts: params.counts,
   });
 
+  // Best-effort: detect a Panopto tab on the course and persist its URL.
+  // Tab fetch failures don't fail the sync — Panopto isn't core data.
+  let panoptoTabUrl: string | null = null;
+  try {
+    const tabs = await getCourseTabs(params.course.canvas_course_id);
+    panoptoTabUrl = detectPanoptoTab(tabs);
+  } catch (error) {
+    console.error(`Failed to fetch course tabs for ${params.course.code ?? "MOD"}:`, error);
+  }
+
   params.counts.modules += 1;
   await params.supabase
     .from("courses")
-    .update({ last_canvas_sync: new Date().toISOString(), sync_enabled: true })
+    .update({
+      last_canvas_sync: new Date().toISOString(),
+      sync_enabled: true,
+      panopto_tab_url: panoptoTabUrl,
+    })
     .eq("id", params.course.id)
     .eq("user_id", params.userId);
 }

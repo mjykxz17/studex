@@ -24,6 +24,7 @@ type ModuleQueryRow = {
   title: string | null;
   last_canvas_sync: string | null;
   sync_enabled: boolean | null;
+  panopto_tab_url: string | null;
   canvas_files: Array<{
     id: string;
     canvas_file_id: string | null;
@@ -369,7 +370,7 @@ function stripHtmlForSummary(value: string | null | undefined): string {
 async function loadModuleRows(supabase: ReturnType<typeof createServiceClient>, userId: string) {
   return supabase
     .from("courses")
-    .select("id, code, title, last_canvas_sync, sync_enabled, canvas_files(id, canvas_file_id, filename, file_type, uploaded_at, extracted_text, canvas_url), canvas_pages(id, page_url, title, updated_at), course_modules(id, name, position, state, items_count, course_module_items(id, title, item_type, position, content_ref, external_url, indent))")
+    .select("id, code, title, last_canvas_sync, sync_enabled, panopto_tab_url, canvas_files(id, canvas_file_id, filename, file_type, uploaded_at, extracted_text, canvas_url), canvas_pages(id, page_url, title, updated_at), course_modules(id, name, position, state, items_count, course_module_items(id, title, item_type, position, content_ref, external_url, indent))")
     .eq("user_id", userId)
     .order("code", { ascending: true });
 }
@@ -682,6 +683,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
                   indent: it.indent,
                 })),
             })),
+          panoptoTabUrl: module.panopto_tab_url ?? null,
         };
       }),
     );

@@ -458,3 +458,19 @@ export async function getModuleItems(
   }
   return items;
 }
+
+export interface CanvasCourseTab {
+  id: string;
+  label: string;
+  type: "internal" | "external" | string;
+  position?: number;
+  hidden?: boolean;
+  visibility?: string;
+  url?: string;            // canvas-internal href
+  full_url?: string;       // absolute canvas URL
+  external_url?: string;   // present for external tabs (LTI / external tools)
+}
+
+export async function getCourseTabs(courseId: number | string): Promise<CanvasCourseTab[]> {
+  return paginate<CanvasCourseTab>(`/courses/${courseId}/tabs`);
+}

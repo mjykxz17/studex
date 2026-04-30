@@ -4,12 +4,15 @@ import { useState } from "react";
 
 import type { AnnouncementSummary, ModuleSummary, WeeklyTask } from "@/lib/contracts";
 
+import { panoptoEmbedUrl } from "@/lib/canvas-url";
+
 import { FileCard } from "./widgets/file-card";
 import { ModuleTree } from "./widgets/module-tree";
 import { colorForModule, EmptyState, Pill, SectionCard } from "./shared";
 import { CheatsheetPanel } from "@/app/ui/cheatsheet/cheatsheet-panel";
 import { AnnouncementDetailDialog } from "@/app/ui/announcement-detail-dialog";
 import { AssignmentDetailDialog } from "@/app/ui/assignment-detail-dialog";
+import { PanoptoDialog } from "@/app/ui/panopto-dialog";
 
 type ModuleTab = "overview" | "files" | "nusmods" | "cheatsheets";
 
@@ -26,6 +29,7 @@ export function ModuleView({
 }) {
   const [tab, setTab] = useState<ModuleTab>("overview");
   const moduleColor = colorForModule(module.code);
+  const panoptoEmbed = module.panoptoTabUrl ? panoptoEmbedUrl(module.panoptoTabUrl) : null;
   const tabIds = {
     overview: {
       tab: `module-tab-overview-${module.id}`,
@@ -76,6 +80,27 @@ export function ModuleView({
               <Pill>{announcements.length} updates</Pill>
               <Pill>{module.files.length} files</Pill>
             </div>
+            {module.panoptoTabUrl ? (
+              <div className="mt-3">
+                {panoptoEmbed ? (
+                  <PanoptoDialog
+                    title={`${module.code} lecture recordings`}
+                    embedUrl={panoptoEmbed}
+                    moduleCode={module.code}
+                    buttonLabel="Lecture recordings"
+                  />
+                ) : (
+                  <a
+                    href={module.panoptoTabUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-[8px] border border-stone-200 bg-white px-3 py-2 text-[11px] font-medium text-stone-700"
+                  >
+                    Lecture recordings
+                  </a>
+                )}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 lg:w-[280px]">

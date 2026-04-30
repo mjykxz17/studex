@@ -122,8 +122,9 @@ export type ModuleSummary = {
   recentFile: CanvasFileSummary | null;
   examSummary: NUSModsExam | null;
   nusmods?: NUSModsData | null;
-  pages: CanvasPageSummary[];          // ADDED
-  courseModules: CourseModuleSummary[]; // ADDED
+  pages: CanvasPageSummary[];
+  courseModules: CourseModuleSummary[];
+  panoptoTabUrl: string | null;
 };
 
 export type GradeSummary = {

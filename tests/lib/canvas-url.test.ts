@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 
-import { isVideoFilename, isZoomUrl, panoptoEmbedUrl, parseZoomPasscode } from "@/lib/canvas-url";
+import {
+  detectPanoptoTab,
+  isVideoFilename,
+  isZoomUrl,
+  panoptoEmbedUrl,
+  parseZoomPasscode,
+} from "@/lib/canvas-url";
 
 describe("panoptoEmbedUrl", () => {
   it("swaps Viewer.aspx → Embed.aspx", () => {
@@ -71,5 +77,49 @@ describe("parseZoomPasscode", () => {
 
   it("matches case-insensitive passcode label", () => {
     expect(parseZoomPasscode("Title - passcode abc123")).toBe("abc123");
+  });
+});
+
+describe("detectPanoptoTab", () => {
+  it("matches a tab labeled 'Panopto Video'", () => {
+    const tabs = [
+      { label: "Home", hidden: false, full_url: "https://canvas.example/courses/1" },
+      { label: "Panopto Video", hidden: false, full_url: "https://canvas.example/courses/1/external_tools/42" },
+    ];
+    expect(detectPanoptoTab(tabs)).toBe("https://canvas.example/courses/1/external_tools/42");
+  });
+
+  it("matches 'Lecture Recordings' label", () => {
+    const tabs = [
+      { label: "Lecture Recordings", hidden: false, full_url: "https://canvas.example/courses/1/external_tools/99" },
+    ];
+    expect(detectPanoptoTab(tabs)).toBe("https://canvas.example/courses/1/external_tools/99");
+  });
+
+  it("prefers a direct panopto.com URL over the canvas LTI URL", () => {
+    const tabs = [
+      {
+        label: "Panopto",
+        hidden: false,
+        full_url: "https://canvas.example/courses/1/external_tools/42",
+        external_url: "https://mediaweb.ap.panopto.com/Panopto/Pages/Sessions/List.aspx?folderID=abc",
+      },
+    ];
+    expect(detectPanoptoTab(tabs)).toBe("https://mediaweb.ap.panopto.com/Panopto/Pages/Sessions/List.aspx?folderID=abc");
+  });
+
+  it("skips hidden tabs", () => {
+    const tabs = [
+      { label: "Panopto Video", hidden: true, full_url: "https://canvas.example/courses/1/external_tools/42" },
+    ];
+    expect(detectPanoptoTab(tabs)).toBeNull();
+  });
+
+  it("returns null when no Panopto-like tab exists", () => {
+    const tabs = [
+      { label: "Home", hidden: false, full_url: "https://canvas.example/courses/1" },
+      { label: "Grades", hidden: false, full_url: "https://canvas.example/courses/1/grades" },
+    ];
+    expect(detectPanoptoTab(tabs)).toBeNull();
   });
 });
