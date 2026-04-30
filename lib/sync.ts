@@ -25,6 +25,7 @@ import {
 import { type SyncCounts, type SyncEvent } from "@/lib/contracts";
 import { ensureDemoUser } from "@/lib/demo-user";
 import { fetchNUSModsModule } from "@/lib/nusmods";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type SyncSender = (event: SyncEvent) => void;
@@ -254,7 +255,9 @@ async function syncAssignment(params: {
   assignment: CanvasAssignmentWithSubmission;
   existing: TaskRow | undefined;
 }) {
-  const descriptionText = sanitizeSyncText(stripHtml(params.assignment.description ?? ""));
+  const descriptionRaw = params.assignment.description ?? "";
+  const descriptionText = sanitizeSyncText(stripHtml(descriptionRaw));
+  const descriptionHtml = sanitizeHtml(descriptionRaw);
   const descriptionHash = createContentHash(descriptionText);
   const dueAt = params.assignment.due_at ?? null;
 
@@ -267,6 +270,8 @@ async function syncAssignment(params: {
     source_ref_id: String(params.assignment.id),
     completed: false,
     description_hash: descriptionHash,
+    description_html: descriptionHtml,
+    description_text: descriptionText,
   };
 
   const taskUnchanged =
