@@ -62,6 +62,8 @@ create table tasks (
   source_ref_id text,
   completed bool default false,
   description_hash text,
+  description_html text,
+  description_text text,
   weight float,
   unique (user_id, source, source_ref_id)
 );
