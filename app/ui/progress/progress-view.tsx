@@ -7,6 +7,9 @@ import type { AuditResult } from "@/lib/curriculum/types";
 import { BucketCard } from "./bucket-card";
 import { ModuleTakingsEditor } from "./module-takings-editor";
 import { ProgramSelector } from "./program-selector";
+import { Card } from "@/app/ui/primitives/card";
+import { Container } from "@/app/ui/primitives/container";
+import { DensitySelector } from "@/app/ui/primitives/density-selector";
 
 type LoadState =
   | { kind: "idle" }
@@ -44,52 +47,83 @@ export function ProgressView() {
   const refetchAudit = () => setRefetchTrigger((n) => n + 1);
 
   if (state.kind === "idle") {
-    return <p className="text-sm text-stone-500">Loading audit…</p>;
+    return (
+      <Container>
+        <p className="text-[var(--font-size-body)] text-[var(--color-fg-tertiary)]">Loading audit…</p>
+      </Container>
+    );
   }
   if (state.kind === "error") {
-    return <p className="text-sm text-rose-700">Failed to load audit: {state.message}</p>;
+    return (
+      <Container>
+        <p className="text-[var(--font-size-body)] text-[var(--color-danger)]">
+          Failed to load audit: {state.message}
+        </p>
+      </Container>
+    );
   }
 
   const { audit } = state;
   const pct = Math.round((audit.totalMc.current / audit.totalMc.required) * 100);
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-[12px] border border-stone-200 bg-white px-5 py-5">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">Progress</p>
-          <ProgramSelector onChange={refetchAudit} />
+    <Container>
+      <div className="space-y-[var(--space-section-gap)]">
+        <Card>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-fg-tertiary)]">
+              Progress
+            </p>
+            <div className="flex items-center gap-2">
+              <DensitySelector />
+              <ProgramSelector onChange={refetchAudit} />
+            </div>
+          </div>
+          <h2
+            className="mt-2 font-semibold tracking-[-0.02em] text-[var(--color-fg-primary)]"
+            style={{ fontSize: "var(--font-size-heading)", lineHeight: 1.15 }}
+          >
+            {audit.programName}
+          </h2>
+          <div className="mt-4 flex items-baseline gap-3">
+            <span
+              className="font-semibold text-[var(--color-fg-primary)]"
+              style={{ fontSize: "var(--font-size-mc-display)", letterSpacing: "-0.025em" }}
+            >
+              {audit.totalMc.current} / {audit.totalMc.required} MC
+            </span>
+            <span className="text-[var(--font-size-body)] text-[var(--color-fg-tertiary)]">
+              {pct}% to graduation
+            </span>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
+            <div
+              className={`h-full ${audit.willGraduate ? "bg-[var(--color-success)]" : "bg-[var(--color-warn)]"}`}
+              style={{ width: `${pct}%`, transition: "width 600ms var(--ease-out)" }}
+            />
+          </div>
+          {audit.willGraduate ? (
+            <p className="mt-3 text-[var(--font-size-body)] font-medium text-[var(--color-success)]">
+              On track to graduate.
+            </p>
+          ) : (
+            <p className="mt-3 text-[var(--font-size-body)] text-[var(--color-fg-tertiary)]">
+              {audit.blockers.length} bucket(s) remaining.
+            </p>
+          )}
+        </Card>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {audit.buckets.map((b) => (
+            <BucketCard key={b.id} bucket={b} />
+          ))}
         </div>
-        <h2 className="mt-2 font-[var(--font-lora)] text-[24px] font-medium tracking-[-0.02em] text-stone-950">
-          {audit.programName}
-        </h2>
-        <div className="mt-4 flex items-baseline gap-3">
-          <span className="text-2xl font-semibold text-stone-900">
-            {audit.totalMc.current} / {audit.totalMc.required} MC
-          </span>
-          <span className="text-sm text-stone-500">{pct}% to graduation</span>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-100">
-          <div
-            className={`h-full ${audit.willGraduate ? "bg-emerald-500" : "bg-amber-500"}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        {audit.willGraduate ? (
-          <p className="mt-3 text-sm font-medium text-emerald-700">On track to graduate.</p>
-        ) : (
-          <p className="mt-3 text-sm text-stone-500">{audit.blockers.length} bucket(s) remaining.</p>
-        )}
-      </section>
-      <div className="grid gap-3 lg:grid-cols-2">
-        {audit.buckets.map((b) => (
-          <BucketCard key={b.id} bucket={b} />
-        ))}
+
+        <ModuleTakingsEditor
+          onChange={refetchAudit}
+          buckets={audit.buckets.map((b) => ({ id: b.id, name: b.name }))}
+        />
       </div>
-      <ModuleTakingsEditor
-        onChange={refetchAudit}
-        buckets={audit.buckets.map((b) => ({ id: b.id, name: b.name }))}
-      />
-    </div>
+    </Container>
   );
 }
