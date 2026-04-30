@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import type { CanvasFileSummary } from "@/lib/contracts";
 
+import { isVideoFilename } from "@/lib/canvas-url";
 import { useBodyScrollLock, useEscapeToClose } from "./use-modal-behavior";
 
 type FilePreviewDialogProps = {
@@ -128,7 +129,16 @@ export function FilePreviewDialog({
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-hidden rounded-[10px] border border-stone-200 bg-white">
-                      {file.previewKind === "image" ? (
+                      {isVideoFilename(file.name) ? (
+                        <video
+                          controls
+                          src={previewUrl}
+                          className="h-full w-full bg-black"
+                          preload="metadata"
+                        >
+                          <p className="p-4 text-sm">Your browser doesn't support inline video playback.</p>
+                        </video>
+                      ) : file.previewKind === "image" ? (
                         <div className="flex h-full items-center justify-center overflow-auto bg-stone-100 p-4">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={previewUrl} alt={file.name} className="max-h-full max-w-full rounded-xl object-contain shadow-sm" />
