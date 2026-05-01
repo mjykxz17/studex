@@ -13,6 +13,29 @@
 
 ---
 
+## 2026-05-01 · UI overhaul — Phase 3 (extend design system to remaining surfaces)
+**Status:** Planned (scoping question pending user)
+**Why:** Phases 1 + 2 cover Progress tab + all 5 dialogs. Phase 3 extends the Apple-style design language to the home dashboard, module view, NUSMods Current sem tab, cheatsheet generation flow, manage view — and adds the deferred primitives (Tabs, Menu, native `<dialog>` element, `--color-overlay` token).
+**Remaining surfaces (largest first):**
+1. Home dashboard (~6 widgets: stats-header, course-list, recent-files, recent-announcements, due-this-week, schedule-board, recent-grades) — biggest user-facing surface
+2. Module view (header + 4 tabs: Files / NUSMods / Cheatsheets / Manage) — most complex; needs Tabs primitive first
+3. NUSMods Current sem tab (timetable + exam schedule)
+4. Cheatsheet generation flow (generate modal + streaming SSE timeline + cheatsheet panel)
+5. Module-tree widget (already partially Phase 1-aware; Pill aliases still in use)
+**Deferred primitives still to extract:**
+- `Tabs` primitive (used by module-view + NUSMods view)
+- `Menu` primitive (only needed if we add real menus — defer until that triggers)
+- Native `<dialog>` element upgrade (free focus trap + return-focus + inert backdrop)
+- `--color-overlay` token (replace hardcoded `bg-stone-950/45` backdrop)
+- Migrate Pill consumers off legacy aliases (`blue`/`rose`/`slate`/`emerald` → semantic tones); delete OLD class strings once empty
+**Scope decisions pending:**
+- Which surface(s) first (home / module view / cheatsheet / all)
+- Whether to extract Tabs + native `<dialog>` upgrade as foundations first or roll into surface migration
+- Whether to migrate + delete legacy Pill aliases now or keep them around
+**No commits yet — need user direction before plan.**
+
+---
+
 ## 2026-05-01 · UI overhaul — Phase 2 (Dialog primitive + foundations)
 **Status:** Shipped (review-approved with fixes)
 **Spec / Plan:** `docs/superpowers/plans/2026-05-01-ui-design-system-phase-2.md`
