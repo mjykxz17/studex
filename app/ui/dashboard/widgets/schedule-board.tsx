@@ -75,19 +75,19 @@ export function ScheduleBoard({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 rounded-[8px] border border-stone-200 bg-stone-50 p-1">
+        <div className="flex items-center gap-1 rounded-[8px] border border-[color:var(--color-border)] bg-[var(--color-bg-secondary)] p-1">
           <button
             type="button"
             onClick={() => onWeekOffsetChange(weekOffset - 1)}
-            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-stone-500 transition hover:bg-white hover:text-stone-900"
+            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-[var(--color-fg-tertiary)] transition hover:bg-[var(--color-bg-primary)] hover:text-stone-900"
           >
             ‹
           </button>
-          <span className="min-w-[120px] px-2 text-center text-xs font-medium text-stone-700">{formatWeekLabel(weekStart)}</span>
+          <span className="min-w-[120px] px-2 text-center text-xs font-medium text-[var(--color-fg-secondary)]">{formatWeekLabel(weekStart)}</span>
           <button
             type="button"
             onClick={() => onWeekOffsetChange(weekOffset + 1)}
-            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-stone-500 transition hover:bg-white hover:text-stone-900"
+            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-[var(--color-fg-tertiary)] transition hover:bg-[var(--color-bg-primary)] hover:text-stone-900"
           >
             ›
           </button>
@@ -95,7 +95,7 @@ export function ScheduleBoard({
         <button
           type="button"
           onClick={() => onWeekOffsetChange(0)}
-          className="rounded-[8px] border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
+          className="rounded-[8px] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-fg-secondary)] transition hover:border-stone-300 hover:text-stone-900"
         >
           Today
         </button>
@@ -103,7 +103,7 @@ export function ScheduleBoard({
           {activeModules.slice(0, 6).map((module) => (
             <div key={module.id} className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorForModule(module.code) }} />
-              <span className="text-[10px] font-medium text-stone-500">{module.code}</span>
+              <span className="text-[10px] font-medium text-[var(--color-fg-tertiary)]">{module.code}</span>
             </div>
           ))}
         </div>
@@ -158,15 +158,15 @@ export function ScheduleBoard({
           const isToday = sameDay(day.date, new Date());
 
           return (
-            <div key={day.key} className={`rounded-[10px] border ${isToday ? "border-blue-200 bg-blue-50/40" : "border-stone-200 bg-[#fcfbf9]"}`}>
-              <div className="border-b border-stone-200 px-3 py-3">
-                <p className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isToday ? "text-blue-700" : "text-stone-400"}`}>{day.label}</p>
-                <p className="mt-1 text-sm font-semibold text-stone-900">{formatDayLabel(day.date)}</p>
+            <div key={day.key} className={`rounded-[10px] border ${isToday ? "border-blue-200 bg-blue-50/40" : "border-[color:var(--color-border)] bg-[#fcfbf9]"}`}>
+              <div className="border-b border-[color:var(--color-border)] px-3 py-3">
+                <p className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isToday ? "text-blue-700" : "text-[var(--color-fg-tertiary)]"}`}>{day.label}</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--color-fg-primary)]">{formatDayLabel(day.date)}</p>
               </div>
 
               <div className="space-y-2 p-3">
                 {rows.length === 0 ? (
-                  <div className="rounded-[8px] border border-dashed border-stone-200 bg-white px-3 py-4 text-center text-xs text-stone-400">
+                  <div className="rounded-[8px] border border-dashed border-[color:var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-4 text-center text-xs text-[var(--color-fg-tertiary)]">
                     No lessons or deadlines.
                   </div>
                 ) : (
@@ -176,7 +176,7 @@ export function ScheduleBoard({
                     return (
                       <div
                         key={row.key}
-                        className="rounded-[8px] border border-stone-200 bg-white px-3 py-3 shadow-[0_4px_12px_rgba(28,25,23,0.04)]"
+                        className="rounded-[8px] border border-[color:var(--color-border)] bg-white px-3 py-3 shadow-[0_4px_12px_rgba(28,25,23,0.04)]"
                         style={{ borderLeftWidth: 3, borderLeftColor: accent }}
                       >
                         <div className="flex flex-wrap items-center gap-2">
@@ -187,10 +187,10 @@ export function ScheduleBoard({
                           ) : null}
                           <Pill tone={row.kind === "task" ? "rose" : "slate"}>{row.kind === "task" ? "Deadline" : row.title}</Pill>
                         </div>
-                        <p className="mt-2 text-[12.5px] font-semibold leading-5 text-stone-900">
+                        <p className="mt-2 text-[12.5px] font-semibold leading-5 text-[var(--color-fg-primary)]">
                           {row.kind === "task" ? row.title : row.subtitle}
                         </p>
-                        <p className="mt-1 text-[11px] leading-5 text-stone-500">
+                        <p className="mt-1 text-[11px] leading-5 text-[var(--color-fg-tertiary)]">
                           {row.kind === "task" ? `${row.subtitle} · ${row.meta}` : `${row.title} · ${row.meta}`}
                         </p>
                       </div>
