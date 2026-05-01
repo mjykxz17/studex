@@ -38,7 +38,7 @@ export function RecentGradesWidget({ grades }: { grades: GradeSummary[] }) {
                 href={grade.canvasUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-[10px] border border-[color:var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-3 transition hover:border-[color:var(--color-border)] hover:bg-white"
+                className="block rounded-[10px] border border-[color:var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-3 transition hover:border-[color:var(--color-border)] hover:bg-[var(--color-bg-primary)]"
               >
                 {content}
               </a>

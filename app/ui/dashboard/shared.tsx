@@ -43,11 +43,11 @@ export function SectionCard({
   children,
 }: PropsWithChildren<{ title: string; eyebrow?: string; action?: ReactNode }>) {
   return (
-    <section className="overflow-hidden rounded-[12px] border border-stone-200 bg-[#ffffff] shadow-[0_10px_28px_rgba(28,25,23,0.05)]">
-      <div className="flex items-center justify-between gap-4 border-b border-stone-200 bg-[#fcfbf9] px-4 py-3">
+    <section className="overflow-hidden rounded-[12px] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] shadow-[0_10px_28px_rgba(28,25,23,0.05)]">
+      <div className="flex items-center justify-between gap-4 border-b border-[color:var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3">
         <div>
-          {eyebrow ? <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">{eyebrow}</p> : null}
-          <h2 className="mt-1 text-[15px] font-semibold tracking-tight text-stone-950">{title}</h2>
+          {eyebrow ? <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-fg-tertiary)]">{eyebrow}</p> : null}
+          <h2 className="mt-1 text-[15px] font-semibold tracking-tight text-[var(--color-fg-primary)]">{title}</h2>
         </div>
         {action}
       </div>
@@ -58,9 +58,9 @@ export function SectionCard({
 
 export function EmptyState({ title, copy }: { title: string; copy: string }) {
   return (
-    <div className="rounded-[10px] border border-dashed border-stone-200 bg-[#fafaf9] px-5 py-8 text-center">
-      <p className="text-sm font-semibold text-stone-900">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-stone-500">{copy}</p>
+    <div className="rounded-[10px] border border-dashed border-[color:var(--color-border)] bg-[var(--color-bg-secondary)] px-5 py-8 text-center">
+      <p className="text-sm font-semibold text-[var(--color-fg-primary)]">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--color-fg-tertiary)]">{copy}</p>
     </div>
   );
 }

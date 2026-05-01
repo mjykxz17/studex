@@ -43,7 +43,7 @@ export function FileCard({
               href={file.canvasUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-[10px] font-medium text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline"
+              className="text-[10px] font-medium text-[var(--color-fg-tertiary)] underline-offset-2 hover:text-[var(--color-fg-secondary)] hover:underline"
             >
               Source
             </a>

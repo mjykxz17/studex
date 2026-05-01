@@ -79,7 +79,7 @@ export function ScheduleBoard({
           <button
             type="button"
             onClick={() => onWeekOffsetChange(weekOffset - 1)}
-            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-[var(--color-fg-tertiary)] transition hover:bg-[var(--color-bg-primary)] hover:text-stone-900"
+            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-[var(--color-fg-tertiary)] transition hover:bg-[var(--color-bg-primary)] hover:text-[var(--color-fg-primary)]"
           >
             ‹
           </button>
@@ -87,7 +87,7 @@ export function ScheduleBoard({
           <button
             type="button"
             onClick={() => onWeekOffsetChange(weekOffset + 1)}
-            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-[var(--color-fg-tertiary)] transition hover:bg-[var(--color-bg-primary)] hover:text-stone-900"
+            className="grid h-7 w-7 place-items-center rounded-[6px] text-sm text-[var(--color-fg-tertiary)] transition hover:bg-[var(--color-bg-primary)] hover:text-[var(--color-fg-primary)]"
           >
             ›
           </button>
@@ -95,7 +95,7 @@ export function ScheduleBoard({
         <button
           type="button"
           onClick={() => onWeekOffsetChange(0)}
-          className="rounded-[8px] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-fg-secondary)] transition hover:border-stone-300 hover:text-stone-900"
+          className="rounded-[8px] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs font-medium text-[var(--color-fg-secondary)] transition hover:border-[color:var(--color-border-strong)] hover:text-[var(--color-fg-primary)]"
         >
           Today
         </button>
@@ -158,7 +158,7 @@ export function ScheduleBoard({
           const isToday = sameDay(day.date, new Date());
 
           return (
-            <div key={day.key} className={`rounded-[10px] border ${isToday ? "border-blue-200 bg-blue-50/40" : "border-[color:var(--color-border)] bg-[#fcfbf9]"}`}>
+            <div key={day.key} className={`rounded-[10px] border ${isToday ? "border-blue-200 bg-blue-50/40" : "border-[color:var(--color-border)] bg-[var(--color-bg-secondary)]"}`}>
               <div className="border-b border-[color:var(--color-border)] px-3 py-3">
                 <p className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isToday ? "text-blue-700" : "text-[var(--color-fg-tertiary)]"}`}>{day.label}</p>
                 <p className="mt-1 text-sm font-semibold text-[var(--color-fg-primary)]">{formatDayLabel(day.date)}</p>
@@ -185,7 +185,7 @@ export function ScheduleBoard({
                               {row.module.code}
                             </span>
                           ) : null}
-                          <Pill tone={row.kind === "task" ? "rose" : "slate"}>{row.kind === "task" ? "Deadline" : row.title}</Pill>
+                          <Pill tone={row.kind === "task" ? "danger" : "neutral"}>{row.kind === "task" ? "Deadline" : row.title}</Pill>
                         </div>
                         <p className="mt-2 text-[12.5px] font-semibold leading-5 text-[var(--color-fg-primary)]">
                           {row.kind === "task" ? row.title : row.subtitle}

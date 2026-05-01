@@ -60,7 +60,7 @@ export function RecentAnnouncementsWidget({
                         event.stopPropagation();
                         onMarkAnnouncementSeen(announcement.id);
                       }}
-                      className="rounded-[7px] border border-[color:var(--color-border)] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[var(--color-fg-secondary)]"
+                      className="rounded-[7px] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--color-fg-secondary)]"
                     >
                       {seenAnnouncements[announcement.id] ? "Seen" : "Mark seen"}
                     </button>
