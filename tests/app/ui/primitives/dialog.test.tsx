@@ -62,4 +62,49 @@ describe("Dialog", () => {
     );
     expect(screen.getByRole("dialog").className).toMatch(/max-w-5xl/);
   });
+
+  it("body has p-6 and overflow-auto by default", () => {
+    render(
+      <Dialog open onClose={() => {}} title="X">
+        <p>body</p>
+      </Dialog>,
+    );
+    const wrap = screen.getByText("body").parentElement as HTMLElement;
+    expect(wrap.className).toMatch(/p-6/);
+    expect(wrap.className).toMatch(/overflow-auto/);
+  });
+
+  it("bareBody removes default padding and overflow-auto", () => {
+    render(
+      <Dialog open onClose={() => {}} title="X" bareBody>
+        <p>body</p>
+      </Dialog>,
+    );
+    const wrap = screen.getByText("body").parentElement as HTMLElement;
+    expect(wrap.className).not.toMatch(/p-6/);
+    expect(wrap.className).not.toMatch(/overflow-auto/);
+  });
+
+  it("bodyClassName replaces the default body classes", () => {
+    render(
+      <Dialog open onClose={() => {}} title="X" bodyClassName="custom-body">
+        <p>body</p>
+      </Dialog>,
+    );
+    const wrap = screen.getByText("body").parentElement as HTMLElement;
+    expect(wrap.className).toBe("custom-body");
+  });
+
+  it("aria-labelledby links the dialog to its title", () => {
+    render(
+      <Dialog open onClose={() => {}} title="My Title">
+        <p>body</p>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole("dialog");
+    const labelId = dialog.getAttribute("aria-labelledby");
+    expect(labelId).toBeTruthy();
+    const labelEl = document.getElementById(labelId!);
+    expect(labelEl?.textContent).toBe("My Title");
+  });
 });

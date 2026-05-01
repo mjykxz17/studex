@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useId } from "react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/app/ui/primitives/cn";
@@ -36,6 +37,7 @@ export function Dialog({
   bareBody = false,
   children,
 }: Props) {
+  const titleId = useId();
   useBodyScrollLock(open);
   useEscapeToClose(open, onClose);
 
@@ -53,6 +55,7 @@ export function Dialog({
         <div
           role="dialog"
           aria-modal="true"
+          aria-labelledby={titleId}
           className={cn(
             "flex h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] shadow-[var(--shadow-lift)] sm:h-[calc(100vh-3rem)]",
             SIZE_CLASSES[size],
@@ -66,7 +69,7 @@ export function Dialog({
                   {eyebrow}
                 </p>
               ) : null}
-              <h2 className="mt-2 text-lg font-semibold tracking-tight text-[var(--color-fg-primary)]">
+              <h2 id={titleId} className="mt-2 text-lg font-semibold tracking-tight text-[var(--color-fg-primary)]">
                 {title}
               </h2>
             </div>
@@ -78,7 +81,12 @@ export function Dialog({
               Close
             </button>
           </div>
-          <div className={cn(bareBody ? "min-h-0 flex-1" : "min-h-0 flex-1 overflow-auto p-6", bodyClassName)}>
+          <div
+            className={
+              bodyClassName
+                ?? (bareBody ? "min-h-0 flex-1" : "min-h-0 flex-1 overflow-auto p-6")
+            }
+          >
             {children}
           </div>
         </div>
