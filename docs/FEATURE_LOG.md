@@ -30,7 +30,23 @@
   - Primary `Add to plan` button paired with NUSMods search input
   - Density selector + Program selector both right-aligned in Progress header
 - Bucket grid responsive: `md:grid-cols-2 xl:grid-cols-3`
-**Open thread:** Manual browser smoke (14-step checklist in plan Task 13) not yet run
+**Open thread:** Manual browser smoke confirmed by user
+
+### 2026-05-01 · Post-review fixes (sub-entry)
+**Status:** Shipped
+**Commit:** `e5fc0a7`
+**Why:** Final cross-cutting review (Opus reviewer) found 2 blocking + 3 important issues. Fixes:
+- (Critical) `npm run build` was failing — `manage-view.tsx` used `tone="emerald"` which the new Pill union dropped. Added `emerald` to legacy aliases.
+- (Critical) Pill visual regression on every non-migrated Pill consumer (module-view, module-tree, nusmods-view, file-card, etc.) — the new compact tokenized look had been forced onto legacy aliases too. Restructured so per-tone classes carry their own padding/font/size; legacy aliases (`blue`, `rose`, `slate`, `emerald`) preserve OLD colored-bg/border/`py-1`/`font-semibold` look exactly. New tones (`neutral`/`accent`/`success`/`warn`/`danger`) keep the compact tokenized look.
+- (Important) DensitySelector hydration mismatch — switched to `useSyncExternalStore` (canonical React pattern for external storage) eliminating SSR/CSR mismatch.
+- (Important) `•••` popover keyboard a11y — added `aria-expanded`, `aria-haspopup="menu"`, `role="menu"` / `role="menuitem"`, `focus-within:opacity-100` (so keyboard users can reach the trigger), Escape key handler.
+- (Important) Removed dead `@theme inline` self-references in `app/globals.css` that were tautologies relying on import order.
+
+**Verification gate fix:** Future plans must include `npm run build` (not just lint + vitest) since `tsc` strict checks on un-touched files are only caught at build time.
+
+**Deferred (in followup tickets):**
+- Add unit tests for `module-takings-editor` `•••` flow (popover state, click-outside, bucket override calls)
+- Phase 2: extract `Menu` primitive; migrate Pill consumers off legacy aliases; extract `ProgressBar` primitive; add `clsx`/`cn()` helper; Playwright visual snapshots
 **Why:** User feedback: "I want the UI to be more flexible for user, it should be optimized for what I want to show, buttons should be at intuitive places. I want the transition or anything to follow the apple.com style."
 
 **Scope decisions made (brainstormed 2026-05-01):**
