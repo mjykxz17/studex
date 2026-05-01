@@ -4,15 +4,10 @@ import type { BucketResult } from "@/lib/curriculum/types";
 
 import { Pill } from "@/app/ui/dashboard/shared";
 import { Card } from "@/app/ui/primitives/card";
+import { ProgressBar } from "@/app/ui/primitives/progress-bar";
 
 export function BucketCard({ bucket }: { bucket: BucketResult }) {
   const pct = Math.min(100, Math.round((bucket.current / bucket.required) * 100));
-  const barClass =
-    bucket.status === "complete"
-      ? "bg-[var(--color-success)]"
-      : bucket.status === "in_progress"
-        ? "bg-[var(--color-warn)]"
-        : "bg-[var(--color-fg-tertiary)]";
 
   return (
     <Card hoverLift>
@@ -24,10 +19,16 @@ export function BucketCard({ bucket }: { bucket: BucketResult }) {
           {bucket.current} / {bucket.required} MC
         </span>
       </header>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
-        <div
-          className={`h-full ${barClass}`}
-          style={{ width: `${pct}%`, transition: "width 600ms var(--ease-out)" }}
+      <div className="mt-3">
+        <ProgressBar
+          value={pct}
+          tone={
+            bucket.status === "complete"
+              ? "success"
+              : bucket.status === "in_progress"
+                ? "warn"
+                : "tertiary"
+          }
         />
       </div>
       {bucket.fulfilling.length > 0 ? (

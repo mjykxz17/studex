@@ -10,6 +10,7 @@ import { ProgramSelector } from "./program-selector";
 import { Card } from "@/app/ui/primitives/card";
 import { Container } from "@/app/ui/primitives/container";
 import { DensitySelector } from "@/app/ui/primitives/density-selector";
+import { ProgressBar } from "@/app/ui/primitives/progress-bar";
 
 type LoadState =
   | { kind: "idle" }
@@ -96,11 +97,8 @@ export function ProgressView() {
               {pct}% to graduation
             </span>
           </div>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
-            <div
-              className={`h-full ${audit.willGraduate ? "bg-[var(--color-success)]" : "bg-[var(--color-warn)]"}`}
-              style={{ width: `${pct}%`, transition: "width 600ms var(--ease-out)" }}
-            />
+          <div className="mt-3">
+            <ProgressBar value={pct} tone={audit.willGraduate ? "success" : "warn"} />
           </div>
           {audit.willGraduate ? (
             <p className="mt-3 text-[var(--font-size-body)] font-medium text-[var(--color-success)]">
