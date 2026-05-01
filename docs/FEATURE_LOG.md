@@ -13,15 +13,34 @@
 
 ---
 
-## 2026-05-01 · UI overhaul — Phase 2 (extend design system to remaining surfaces)
-**Status:** Planned (scoping question pending user)
-**Why:** Phase 1 proved the token + primitive system on the Progress tab. Phase 2 extends it to the remaining surfaces (home dashboard, module view, dialogs, NUSMods Current sem tab, cheatsheet flow) and adds the deferred primitive extractions (`Dialog`, `Tabs`, `Menu`, `ProgressBar`, `cn()` helper) that the Phase 1 reviewer flagged.
-**Scope decisions pending:**
-- Approach: foundations + one surface (recommended) / dialogs-only / surface-by-surface
-- Which surface first if doing one at a time (home / module-view / dialogs / cheatsheet)
-- Whether to extract all 4 deferred primitives at once or only the ones the chosen surface needs
-- Whether to also migrate existing Pill call sites off legacy aliases now (would let us delete OLD class strings) or defer
-**No commits yet — need user direction before plan.**
+## 2026-05-01 · UI overhaul — Phase 2 (Dialog primitive + foundations)
+**Status:** Shipped (review-approved with fixes)
+**Spec / Plan:** `docs/superpowers/plans/2026-05-01-ui-design-system-phase-2.md`
+**Commits:** `a9a9031` → `8f69d7f` (8 commits — 6 implementation + 1 keyframe hotfix + 1 post-review fix)
+**Tests:** 215 → 219 (+4 from review-driven Dialog test additions; +13 new primitive tests overall)
+**Files shipped:**
+- New primitives: `app/ui/primitives/{cn,progress-bar,dialog}.tsx`
+- New tokens: `studex-dialog-in` keyframe + reduce-motion override in `app/tokens.css`
+- Migrated 5 dialogs to use `<Dialog>`: page-viewer, announcement-detail, assignment-detail, file-preview (preserved 7-branch body switch + meta-strip), panopto (`bareBody` for full-bleed iframe)
+- ProgressBar consumers: `progress-view.tsx`, `bucket-card.tsx`
+- Net code reduction: ~280 lines of duplicated dialog shell removed
+**Apple-style polish now uniform across:** Progress tab + all 5 dialog surfaces (page, announcement, assignment, file preview, Panopto)
+
+### 2026-05-01 · Phase 2 post-review fixes (sub-entry)
+**Status:** Shipped
+**Commits:** `856e5e0` (keyframe definition was missing in dialog.tsx, moved to tokens.css), `8f69d7f` (post-review fixes)
+**Why:** Final cross-cutting review (Opus) found 1 critical + 1 important issue:
+- (Critical) `bodyClassName` was APPENDED to default body classes, causing double-padding regression in file-preview meta-strip layout. Fixed by changing the body-div className resolution to `bodyClassName ?? defaults` — replacement semantics. Consumers passing `bodyClassName` now take full responsibility for layout.
+- (Important) Dialog dropped `aria-labelledby` linkage to title — screen-reader regression. Fixed via `useId()` + matching `id` on `<h2>` + `aria-labelledby` on the dialog landmark.
+- Added 4 new tests for the previously-uncovered props: default body classes, `bareBody`, `bodyClassName` replacement, `aria-labelledby` linkage.
+
+**Deferred to Phase 3:**
+- Adopt native `<dialog>` element + `showModal()` for free focus trap + return-focus + Escape + inert backdrop
+- `Tabs` primitive (when migrating module-view + cheatsheet panel)
+- `Menu` primitive (when adding real menus)
+- Tokenize hardcoded `bg-stone-950/45` backdrop tint (`--color-overlay`)
+- Visual-regression tests (Playwright snapshots)
+- Migrate Pill consumers off legacy aliases; delete OLD class strings
 
 ---
 
