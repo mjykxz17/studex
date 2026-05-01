@@ -13,26 +13,37 @@
 
 ---
 
-## 2026-05-01 · UI overhaul — Phase 3 (extend design system to remaining surfaces)
-**Status:** Planned (scoping question pending user)
-**Why:** Phases 1 + 2 cover Progress tab + all 5 dialogs. Phase 3 extends the Apple-style design language to the home dashboard, module view, NUSMods Current sem tab, cheatsheet generation flow, manage view — and adds the deferred primitives (Tabs, Menu, native `<dialog>` element, `--color-overlay` token).
-**Remaining surfaces (largest first):**
-1. Home dashboard (~6 widgets: stats-header, course-list, recent-files, recent-announcements, due-this-week, schedule-board, recent-grades) — biggest user-facing surface
-2. Module view (header + 4 tabs: Files / NUSMods / Cheatsheets / Manage) — most complex; needs Tabs primitive first
-3. NUSMods Current sem tab (timetable + exam schedule)
-4. Cheatsheet generation flow (generate modal + streaming SSE timeline + cheatsheet panel)
-5. Module-tree widget (already partially Phase 1-aware; Pill aliases still in use)
-**Deferred primitives still to extract:**
-- `Tabs` primitive (used by module-view + NUSMods view)
-- `Menu` primitive (only needed if we add real menus — defer until that triggers)
-- Native `<dialog>` element upgrade (free focus trap + return-focus + inert backdrop)
-- `--color-overlay` token (replace hardcoded `bg-stone-950/45` backdrop)
-- Migrate Pill consumers off legacy aliases (`blue`/`rose`/`slate`/`emerald` → semantic tones); delete OLD class strings once empty
-**Scope decisions pending:**
-- Which surface(s) first (home / module view / cheatsheet / all)
-- Whether to extract Tabs + native `<dialog>` upgrade as foundations first or roll into surface migration
-- Whether to migrate + delete legacy Pill aliases now or keep them around
-**No commits yet — need user direction before plan.**
+## 2026-05-01 · UI overhaul — Phase 3 (home dashboard surface)
+**Status:** Shipped (review-approved with fixes)
+**Plan:** `docs/superpowers/plans/2026-05-01-ui-design-system-phase-3.md`
+**Commits:** `7b76d19` → `1817f66` (8 commits — 6 implementation + 1 cross-cutting fix + 1 log update)
+**Tests:** 219 → 220 (+1 from new ProgressBar accent tone test)
+**Execution mode:** Subagent-driven with PARALLEL dispatch in 2 waves (Tasks 2/4/6 wave 1; Tasks 3/5 wave 2). Cut wall-clock time roughly in half vs sequential.
+**Files shipped:**
+- `app/ui/dashboard/home-view.tsx` — wrapped in `<Container>`, uses `--space-section-gap`
+- 6 widgets migrated to `<Card>` + token colors: stats-header, course-list, course-progress (with new `<ProgressBar tone="accent">`), new-files (delegates to SectionCard already), file-card, recent-announcements, recent-grades, due-this-week, schedule-board (color-only)
+- `app/ui/dashboard/shared.tsx` `SectionCard` + `EmptyState` migrated to tokens (review-driven fix; was missed in initial pass)
+- `app/ui/primitives/progress-bar.tsx` extended with `accent` tone for non-status progress visualizations
+- Pill alias migration on home-dashboard widgets that used legacy aliases (file-card, course-list, schedule-board)
+**Design language now uniform across:** Progress tab + 5 dialogs + entire home dashboard
+
+### 2026-05-01 · Phase 3 post-review fixes (sub-entry)
+**Status:** Shipped
+**Commit:** `1817f66`
+**Why:** Final cross-cutting review (Opus) found 1 critical structural miss + 1 critical small miss + 3 important polish items:
+- (Critical) `SectionCard` + `EmptyState` in `shared.tsx` were never migrated — they wrap 6+ home-dashboard widgets, propagating stone-* chrome despite the widgets' bodies being tokenized. Plan didn't list `shared.tsx` in scope; fixed retroactively. Knock-on benefit: every other surface that uses `SectionCard` (modules-view, manage-view, nusmods-view, module-view) now also gets the token chrome for free.
+- (Critical) `file-card.tsx` Source link still used `text-stone-400 hover:text-stone-600`. Fixed.
+- (Important) `schedule-board.tsx` Pill aliases (`tone="rose|slate"`) were not in the original scope but visually inconsistent with the rest of the home dashboard. Migrated. Plus 2 hover-state stones missed in the original color-only pass.
+- (Important) `recent-announcements-widget.tsx` Mark-seen button + `recent-grades-widget.tsx` hover state still used `bg-white` instead of `var(--color-bg-primary)`.
+
+**Deferred to Phase 4:**
+- `--color-accent-subtle` + `--color-accent-border` tokens (the "today" highlight on schedule-board, the "unseen" highlight on announcements use raw `blue-200/blue-50/40` Tailwind utilities — three places will exist by Phase 4 end)
+- `stats-header.tsx` outer chrome still hand-rolled instead of using `<Card>` (functional, just not DRY)
+- Stats card accent prop uses inline hex codes — could be tokens
+- Module view, manage view, NUSMods Current sem tab, cheatsheet flow (all separate surface migrations)
+- Tabs, Menu primitives
+- Native `<dialog>` element upgrade
+- Final removal of legacy Pill aliases (defer until ALL surfaces migrate)
 
 ---
 
