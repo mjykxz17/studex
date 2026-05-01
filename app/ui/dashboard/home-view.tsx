@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import type { DashboardData } from "@/lib/contracts";
+import { Container } from "@/app/ui/primitives/container";
 import { EmptyState } from "@/app/ui/dashboard/shared";
 import { CourseListWidget } from "./widgets/course-list-widget";
 import { CourseProgressWidget } from "./widgets/course-progress-widget";
@@ -68,38 +69,40 @@ export function HomeView({
   const dueSoonCount = filteredTasks.filter((task) => task.status === "due-soon").length;
 
   return (
-    <div className="space-y-4">
-      <StatsHeader
-        dueSoonCount={dueSoonCount}
-        openTaskCount={filteredTasks.length}
-        unreadAnnouncementCount={unreadAnnouncementCount}
-      />
-
-      {activeModules.length === 0 ? (
-        <EmptyState
-          title="No modules synced yet"
-          copy="Use Sync Canvas to discover modules from Canvas, then enable the ones that should power your command board."
+    <Container>
+      <div className="space-y-[var(--space-section-gap)]">
+        <StatsHeader
+          dueSoonCount={dueSoonCount}
+          openTaskCount={filteredTasks.length}
+          unreadAnnouncementCount={unreadAnnouncementCount}
         />
-      ) : (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_310px]">
-          <div className="space-y-4">
-            <ScheduleBoard modules={activeModules} tasks={filteredTasks} weekOffset={weekOffset} onWeekOffsetChange={setWeekOffset} />
-            <DueThisWeekWidget tasks={dueThisWeek} />
-            <RecentAnnouncementsWidget
-              announcements={filteredAnnouncements}
-              seenAnnouncements={seenAnnouncements}
-              onMarkAnnouncementSeen={onMarkAnnouncementSeen}
-            />
-            <NewFilesWidget files={filteredRecentFiles} onOpenModule={onOpenModule} />
-          </div>
 
-          <div className="space-y-4">
-            <CourseProgressWidget courses={filteredCourseProgress} onOpenModule={onOpenModule} />
-            <RecentGradesWidget grades={filteredRecentGrades} />
-            <CourseListWidget modules={activeModules} onOpenModule={onOpenModule} />
+        {activeModules.length === 0 ? (
+          <EmptyState
+            title="No modules synced yet"
+            copy="Use Sync Canvas to discover modules from Canvas, then enable the ones that should power your command board."
+          />
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_310px]">
+            <div className="space-y-[var(--space-section-gap)]">
+              <ScheduleBoard modules={activeModules} tasks={filteredTasks} weekOffset={weekOffset} onWeekOffsetChange={setWeekOffset} />
+              <DueThisWeekWidget tasks={dueThisWeek} />
+              <RecentAnnouncementsWidget
+                announcements={filteredAnnouncements}
+                seenAnnouncements={seenAnnouncements}
+                onMarkAnnouncementSeen={onMarkAnnouncementSeen}
+              />
+              <NewFilesWidget files={filteredRecentFiles} onOpenModule={onOpenModule} />
+            </div>
+
+            <div className="space-y-[var(--space-section-gap)]">
+              <CourseProgressWidget courses={filteredCourseProgress} onOpenModule={onOpenModule} />
+              <RecentGradesWidget grades={filteredRecentGrades} />
+              <CourseListWidget modules={activeModules} onOpenModule={onOpenModule} />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </Container>
   );
 }
