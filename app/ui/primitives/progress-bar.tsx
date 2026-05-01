@@ -1,11 +1,12 @@
 import { cn } from "@/app/ui/primitives/cn";
 
-type Tone = "success" | "warn" | "tertiary";
+type Tone = "success" | "warn" | "tertiary" | "accent";
 
 const TONE_CLASSES: Record<Tone, string> = {
   success: "bg-[var(--color-success)]",
   warn: "bg-[var(--color-warn)]",
   tertiary: "bg-[var(--color-fg-tertiary)]",
+  accent: "bg-[var(--color-accent)]",
 };
 
 export function ProgressBar({

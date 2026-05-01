@@ -2,6 +2,7 @@
 
 import type { ModuleSummary } from "@/lib/contracts";
 import { colorForModule, EmptyState, Pill, SectionCard } from "@/app/ui/dashboard/shared";
+import { Card } from "@/app/ui/primitives/card";
 
 export function CourseListWidget({
   modules,
@@ -17,29 +18,30 @@ export function CourseListWidget({
       ) : (
         <div className="space-y-2">
           {modules.map((module) => (
-            <button
-              key={module.id}
-              type="button"
-              onClick={() => onOpenModule(module.code)}
-              className="w-full rounded-[10px] border border-stone-200 bg-[#fcfbf9] px-3 py-3 text-left transition hover:border-stone-300 hover:bg-white"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorForModule(module.code) }} />
-                    <p className="text-[11px] font-bold tracking-[0.08em]" style={{ color: colorForModule(module.code) }}>
-                      {module.code}
-                    </p>
+            <Card key={module.id} hoverLift>
+              <button
+                type="button"
+                onClick={() => onOpenModule(module.code)}
+                className="w-full text-left"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorForModule(module.code) }} />
+                      <p className="text-[11px] font-bold tracking-[0.08em]" style={{ color: colorForModule(module.code) }}>
+                        {module.code}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-[13px] font-medium text-[var(--color-fg-primary)]">{module.title}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Pill>{module.taskCount} tasks</Pill>
+                      <Pill>{module.files.length} files</Pill>
+                    </div>
                   </div>
-                  <p className="mt-2 text-[13px] font-medium text-stone-900">{module.title}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Pill>{module.taskCount} tasks</Pill>
-                    <Pill>{module.files.length} files</Pill>
-                  </div>
+                  <span className="text-[11px] text-[var(--color-fg-tertiary)]">{module.lastSyncLabel}</span>
                 </div>
-                <span className="text-[11px] text-stone-400">{module.lastSyncLabel}</span>
-              </div>
-            </button>
+              </button>
+            </Card>
           ))}
         </div>
       )}

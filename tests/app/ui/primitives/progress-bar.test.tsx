@@ -35,4 +35,10 @@ describe("ProgressBar", () => {
     const fill = container.querySelector('[data-testid="progress-fill"]') as HTMLElement;
     expect(fill.className).toMatch(/bg-\[var\(--color-fg-tertiary\)\]/);
   });
+
+  it("accent tone applies accent token", () => {
+    const { container } = render(<ProgressBar value={50} tone="accent" />);
+    const fill = container.querySelector('[data-testid="progress-fill"]') as HTMLElement;
+    expect(fill.className).toMatch(/bg-\[var\(--color-accent\)\]/);
+  });
 });
