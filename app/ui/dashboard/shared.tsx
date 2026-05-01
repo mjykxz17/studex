@@ -71,21 +71,24 @@ type PillTone =
   | "success"
   | "warn"
   | "danger"
-  // legacy aliases (kept for non-migrated call sites)
+  // Legacy aliases — preserve old visuals EXACTLY for non-migrated call sites
   | "blue"
   | "rose"
-  | "slate";
+  | "slate"
+  | "emerald";
 
 const PILL_TONE_CLASSES: Record<PillTone, string> = {
-  neutral: "bg-[var(--color-bg-secondary)] text-[var(--color-fg-primary)]",
-  accent: "bg-[var(--color-bg-secondary)] text-[var(--color-accent)]",
-  success: "bg-[var(--color-bg-secondary)] text-[var(--color-success)]",
-  warn: "bg-[var(--color-bg-secondary)] text-[var(--color-warn)]",
-  danger: "bg-[var(--color-bg-secondary)] text-[var(--color-danger)]",
-  // legacy aliases
-  blue: "bg-[var(--color-bg-secondary)] text-[var(--color-accent)]",
-  rose: "bg-[var(--color-bg-secondary)] text-[var(--color-danger)]",
-  slate: "bg-[var(--color-bg-secondary)] text-[var(--color-fg-primary)]",
+  // New tokenised tones (compact Apple style)
+  neutral: "bg-[var(--color-bg-secondary)] text-[var(--color-fg-primary)] px-2 py-0.5 text-[10px] font-medium",
+  accent: "bg-[var(--color-bg-secondary)] text-[var(--color-accent)] px-2 py-0.5 text-[10px] font-medium",
+  success: "bg-[var(--color-bg-secondary)] text-[var(--color-success)] px-2 py-0.5 text-[10px] font-medium",
+  warn: "bg-[var(--color-bg-secondary)] text-[var(--color-warn)] px-2 py-0.5 text-[10px] font-medium",
+  danger: "bg-[var(--color-bg-secondary)] text-[var(--color-danger)] px-2 py-0.5 text-[10px] font-medium",
+  // Legacy tones — keep the OLD look so non-migrated surfaces don't shift
+  blue: "bg-blue-50 text-blue-800 border border-blue-100 px-2.5 py-1 text-[10px] font-semibold",
+  rose: "bg-rose-50 text-rose-800 border border-rose-100 px-2.5 py-1 text-[10px] font-semibold",
+  slate: "bg-stone-100 text-stone-700 border border-stone-200 px-2.5 py-1 text-[10px] font-semibold",
+  emerald: "bg-emerald-50 text-emerald-800 border border-emerald-100 px-2.5 py-1 text-[10px] font-semibold",
 };
 
 export function Pill({
@@ -97,7 +100,7 @@ export function Pill({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${PILL_TONE_CLASSES[tone]}`}
+      className={`inline-flex items-center gap-1 rounded-full ${PILL_TONE_CLASSES[tone]}`}
     >
       {children}
     </span>

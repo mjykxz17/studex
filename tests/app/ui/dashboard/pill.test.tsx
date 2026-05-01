@@ -21,16 +21,24 @@ describe("Pill", () => {
 
   it("legacy 'blue' alias keeps working", () => {
     render(<Pill tone="blue">x</Pill>);
-    expect(screen.getByText("x").className).toMatch(/text-\[var\(--color-accent\)\]/);
+    expect(screen.getByText("x").className).toMatch(/bg-blue-50/);
+    expect(screen.getByText("x").className).toMatch(/text-blue-800/);
   });
 
   it("legacy 'rose' alias keeps working", () => {
     render(<Pill tone="rose">x</Pill>);
-    expect(screen.getByText("x").className).toMatch(/text-\[var\(--color-danger\)\]/);
+    expect(screen.getByText("x").className).toMatch(/bg-rose-50/);
+    expect(screen.getByText("x").className).toMatch(/text-rose-800/);
   });
 
   it("legacy 'slate' alias keeps working", () => {
     render(<Pill tone="slate">x</Pill>);
-    expect(screen.getByText("x").className).toMatch(/bg-\[var\(--color-bg-secondary\)\]/);
+    expect(screen.getByText("x").className).toMatch(/bg-stone-100/);
+    expect(screen.getByText("x").className).toMatch(/text-stone-700/);
+  });
+
+  it("legacy 'emerald' alias keeps working", () => {
+    render(<Pill tone="emerald">x</Pill>);
+    expect(screen.getByText("x").className).toMatch(/bg-emerald-50/);
   });
 });

@@ -178,8 +178,15 @@ function TakingRow({
         setMenuOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
     window.addEventListener("mousedown", onClick);
-    return () => window.removeEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [menuOpen]);
 
   return (
@@ -213,18 +220,24 @@ function TakingRow({
         variant="ghost"
         size="sm"
         aria-label="More actions"
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
         onClick={() => setMenuOpen((v) => !v)}
-        className="opacity-0 group-hover:opacity-100 motion-hover"
+        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 motion-hover"
       >
         •••
       </Button>
       {menuOpen ? (
-        <div className="absolute right-2 top-full z-10 mt-1 w-56 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] py-1 shadow-[var(--shadow-lift)]">
+        <div
+          role="menu"
+          className="absolute right-2 top-full z-10 mt-1 w-56 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[var(--color-bg-primary)] py-1 shadow-[var(--shadow-lift)]"
+        >
           <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-fg-tertiary)]">
             Move to bucket
           </p>
           <button
             type="button"
+            role="menuitem"
             onClick={() => {
               onUpdate(taking, { bucket_override: null });
               setMenuOpen(false);
@@ -237,6 +250,7 @@ function TakingRow({
             <button
               key={b.id}
               type="button"
+              role="menuitem"
               onClick={() => {
                 onUpdate(taking, { bucket_override: b.id });
                 setMenuOpen(false);
@@ -253,6 +267,7 @@ function TakingRow({
           <div className="my-1 border-t border-[color:var(--color-border)]" />
           <button
             type="button"
+            role="menuitem"
             onClick={() => {
               onRemove(taking);
               setMenuOpen(false);

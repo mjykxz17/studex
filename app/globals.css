@@ -13,18 +13,6 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-lora);
-
-  /* === Phase 1 semantic tokens — exposed as Tailwind utilities === */
-  --color-fg-primary: var(--color-fg-primary);
-  --color-fg-secondary: var(--color-fg-secondary);
-  --color-fg-tertiary: var(--color-fg-tertiary);
-  --color-bg-primary: var(--color-bg-primary);
-  --color-bg-secondary: var(--color-bg-secondary);
-  --color-accent: var(--color-accent);
-  --color-accent-hover: var(--color-accent-hover);
-  --color-accent-fg: var(--color-accent-fg);
-  --color-border-soft: var(--color-border);
-  --color-border-strong: var(--color-border-strong);
 }
 
 * {

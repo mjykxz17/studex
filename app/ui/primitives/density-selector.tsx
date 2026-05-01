@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 type Density = "compact" | "comfortable" | "spacious";
 const VALUES: Density[] = ["compact", "comfortable", "spacious"];
@@ -11,24 +11,32 @@ const LABELS: Record<Density, string> = {
 };
 const STORAGE_KEY = "studex.density";
 
-function readStored(): Density {
-  if (typeof window === "undefined") return "comfortable";
-  const v = window.localStorage.getItem(STORAGE_KEY);
+function parseDensity(v: string | null): Density {
   return v === "compact" || v === "comfortable" || v === "spacious" ? v : "comfortable";
 }
 
+function subscribe(cb: () => void) {
+  window.addEventListener("storage", cb);
+  return () => window.removeEventListener("storage", cb);
+}
+
+function getSnapshot(): Density {
+  return parseDensity(window.localStorage.getItem(STORAGE_KEY));
+}
+
+function getServerSnapshot(): Density {
+  return "comfortable";
+}
+
 export function DensitySelector() {
-  const [density, setDensity] = useState<Density>(readStored);
+  const density = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-density", density);
-  }, [density]);
-
-  const select = (next: Density) => {
-    setDensity(next);
+  const select = useCallback((next: Density) => {
     window.localStorage.setItem(STORAGE_KEY, next);
     document.documentElement.setAttribute("data-density", next);
-  };
+    // Dispatch a storage event so useSyncExternalStore re-reads the snapshot
+    window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: next }));
+  }, []);
 
   return (
     <div
