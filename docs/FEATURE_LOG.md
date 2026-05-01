@@ -13,6 +13,18 @@
 
 ---
 
+## 2026-05-01 · UI overhaul — Phase 2 (extend design system to remaining surfaces)
+**Status:** Planned (scoping question pending user)
+**Why:** Phase 1 proved the token + primitive system on the Progress tab. Phase 2 extends it to the remaining surfaces (home dashboard, module view, dialogs, NUSMods Current sem tab, cheatsheet flow) and adds the deferred primitive extractions (`Dialog`, `Tabs`, `Menu`, `ProgressBar`, `cn()` helper) that the Phase 1 reviewer flagged.
+**Scope decisions pending:**
+- Approach: foundations + one surface (recommended) / dialogs-only / surface-by-surface
+- Which surface first if doing one at a time (home / module-view / dialogs / cheatsheet)
+- Whether to extract all 4 deferred primitives at once or only the ones the chosen surface needs
+- Whether to also migrate existing Pill call sites off legacy aliases now (would let us delete OLD class strings) or defer
+**No commits yet — need user direction before plan.**
+
+---
+
 ## 2026-05-01 · UI overhaul — Apple-style polish + interaction redesign (Phase 1)
 **Status:** Shipped (awaiting browser smoke test)
 **Spec:** `docs/superpowers/specs/2026-05-01-ui-design-system-phase-1-design.md`
