@@ -4,7 +4,7 @@
 
 **Goal:** Apply the Apple-style design language to the home dashboard surface — wrap content in `Container`, migrate every widget to consume `Card` / `ProgressBar` / `Pill` (semantic tones, not legacy aliases) / token-based typography and spacing.
 
-**Architecture:** Phase 1 + 2 primitives are unchanged. Each widget gets a focused refactor: replace inline `<section>`/`<div>` chrome with `<Card>`, replace inline progress bars with `<ProgressBar>`, rewrite `tone="blue|rose|slate|emerald"` to `tone="accent|danger|neutral|success"`, swap `text-stone-*` / `bg-stone-*` for `text-[var(--color-fg-*)]` / `bg-[var(--color-bg-*)]`. The home view itself gets wrapped in `<Container>` and uses `--space-section-gap` for vertical rhythm.
+**Architecture:** Phase 1 + 2 primitives are unchanged. Each widget gets a focused refactor: replace inline `<section>`/`<div>` chrome with `<Card>`, replace inline progress bars with `<ProgressBar>`, rewrite `tone="blue|rose|slate|emerald"` to `tone="accent|danger|neutral|success"`, swap stone color utilities for the token-based equivalents (e.g. `text-[var(--color-fg-primary)]`, `bg-[var(--color-bg-secondary)]`). The home view itself gets wrapped in `<Container>` and uses `--space-section-gap` for vertical rhythm.
 
 **Tech Stack:** unchanged from Phase 2.
 

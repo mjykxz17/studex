@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Exclude docs/ from Tailwind v4 content scanning — markdown plans/specs may
+   contain pseudo-class strings (e.g., `bg-[var(--color-bg-*)]` as a doc pattern)
+   that Tailwind would otherwise compile into invalid CSS. */
+@source not "../docs/**/*";
+
 :root {
   --background: #f7f6f3;
   --foreground: #1c1917;
