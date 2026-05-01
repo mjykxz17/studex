@@ -119,3 +119,15 @@
     transition-duration: 0ms !important;
   }
 }
+
+/* ---------- Dialog mount animation (used by Dialog primitive) ---------- */
+@keyframes studex-dialog-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes studex-dialog-in {
+    from, to { opacity: 1; transform: none; }
+  }
+}
