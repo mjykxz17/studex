@@ -24,11 +24,11 @@ export function RecentGradesWidget({ grades }: { grades: GradeSummary[] }) {
                   <span className="text-[11px] font-bold tracking-[0.08em]" style={{ color: colorForModule(grade.moduleCode) }}>
                     {grade.moduleCode}
                   </span>
-                  {grade.state ? <span className="text-[10px] text-stone-500">{grade.state}</span> : null}
-                  {grade.gradedLabel ? <span className="text-[10px] text-stone-400">{grade.gradedLabel}</span> : null}
+                  {grade.state ? <span className="text-[10px] text-[var(--color-fg-tertiary)]">{grade.state}</span> : null}
+                  {grade.gradedLabel ? <span className="text-[10px] text-[var(--color-fg-tertiary)]">{grade.gradedLabel}</span> : null}
                 </div>
-                <p className="mt-2 text-[13px] font-medium leading-5 text-stone-900">{grade.assignmentTitle}</p>
-                {scoreLabel ? <p className="mt-1 text-[12px] leading-5 text-stone-700">{scoreLabel}</p> : null}
+                <p className="mt-2 text-[13px] font-medium leading-5 text-[var(--color-fg-primary)]">{grade.assignmentTitle}</p>
+                {scoreLabel ? <p className="mt-1 text-[12px] leading-5 text-[var(--color-fg-secondary)]">{scoreLabel}</p> : null}
               </>
             );
 
@@ -38,14 +38,14 @@ export function RecentGradesWidget({ grades }: { grades: GradeSummary[] }) {
                 href={grade.canvasUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-[10px] border border-stone-200 bg-[#fcfbf9] px-3 py-3 transition hover:border-stone-300 hover:bg-white"
+                className="block rounded-[10px] border border-[color:var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-3 transition hover:border-[color:var(--color-border)] hover:bg-white"
               >
                 {content}
               </a>
             ) : (
               <div
                 key={grade.id}
-                className="rounded-[10px] border border-stone-200 bg-[#fcfbf9] px-3 py-3"
+                className="rounded-[10px] border border-[color:var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-3"
               >
                 {content}
               </div>

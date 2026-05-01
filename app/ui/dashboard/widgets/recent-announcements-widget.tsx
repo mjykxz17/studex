@@ -40,16 +40,16 @@ export function RecentAnnouncementsWidget({
                   }
                 }}
                 aria-expanded={isExpanded}
-                className={`w-full rounded-[10px] border px-3 py-3 text-left cursor-pointer ${unseen ? "border-blue-200 bg-blue-50/40" : "border-stone-200 bg-[#fcfbf9]"}`}
+                className={`w-full rounded-[10px] border px-3 py-3 text-left cursor-pointer ${unseen ? "border-blue-200 bg-blue-50/40" : "border-[color:var(--color-border)] bg-[var(--color-bg-secondary)]"}`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold tracking-[0.08em]" style={{ color: colorForModule(announcement.moduleCode) }}>
                     {announcement.moduleCode}
                   </span>
-                  <span className="text-[10px] text-stone-400">{announcement.postedLabel}</span>
+                  <span className="text-[10px] text-[var(--color-fg-tertiary)]">{announcement.postedLabel}</span>
                 </div>
-                <p className="mt-2 text-[13px] font-medium leading-5 text-stone-900">{announcement.title}</p>
-                <p className={`mt-1 text-[12px] leading-5 text-stone-600 ${isExpanded ? "" : "line-clamp-3"}`}>
+                <p className="mt-2 text-[13px] font-medium leading-5 text-[var(--color-fg-primary)]">{announcement.title}</p>
+                <p className={`mt-1 text-[12px] leading-5 text-[var(--color-fg-secondary)] ${isExpanded ? "" : "line-clamp-3"}`}>
                   {announcement.summary}
                 </p>
                 {isExpanded ? (
@@ -60,7 +60,7 @@ export function RecentAnnouncementsWidget({
                         event.stopPropagation();
                         onMarkAnnouncementSeen(announcement.id);
                       }}
-                      className="rounded-[7px] border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-stone-600"
+                      className="rounded-[7px] border border-[color:var(--color-border)] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[var(--color-fg-secondary)]"
                     >
                       {seenAnnouncements[announcement.id] ? "Seen" : "Mark seen"}
                     </button>
